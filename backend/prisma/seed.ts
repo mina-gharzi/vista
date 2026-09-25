@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { hashPassword } from "../src/utils/password";
 
 const prisma = new PrismaClient();
 
@@ -76,10 +77,44 @@ async function seedCategories(): Promise<void> {
   }
 }
 
+/**
+ * یک فروشنده نمونه با وضعیت APPROVED برای توسعه/تست محلی Feature «Products».
+ * Feature «Seller Account» (ثبت‌نام واقعی فروشنده) هنوز ساخته نشده (Phase 2 پرامپت مادر)،
+ * پس بدون این Seed هیچ کاربری نمی‌تواند از API مدیریت محصول استفاده کند.
+ * Idempotent: با upsert روی email اجرا می‌شود.
+ */
+async function seedDemoSeller(): Promise<void> {
+  const email = "seller-demo@vista.test";
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: { role: "SELLER" },
+    create: {
+      email,
+      fullName: "فروشنده نمونه",
+      role: "SELLER",
+      passwordHash: await hashPassword("Passw0rdX"),
+    },
+  });
+
+  await prisma.seller.upsert({
+    where: { userId: user.id },
+    update: { status: "APPROVED" },
+    create: {
+      userId: user.id,
+      storeName: "فروشگاه نمونه ویستا",
+      storeSlug: "vista-demo-store",
+      status: "APPROVED",
+    },
+  });
+}
+
 async function main(): Promise<void> {
   await seedCategories();
+  await seedDemoSeller();
   // eslint-disable-next-line no-console -- خروجی خلاصه اجرای Seed، مفید برای CLI
-  console.log(`Seeded ${await prisma.category.count()} categories.`);
+  console.log(
+    `Seeded ${await prisma.category.count()} categories and 1 demo seller (seller-demo@vista.test).`,
+  );
 }
 
 main()

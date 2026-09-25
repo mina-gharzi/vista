@@ -7,6 +7,7 @@ import { errorHandler } from "./middlewares/errorHandler";
 import { createRateLimiter } from "./middlewares/rateLimit";
 import { authRouter } from "./modules/auth";
 import { categoriesRouter } from "./modules/categories";
+import { productsRouter } from "./modules/products";
 import { NotFoundError } from "./errors/AppError";
 
 export function createApp(): Express {
@@ -35,6 +36,7 @@ export function createApp(): Express {
   // هر Module کامل‌شده (طبق بخش ۳ و ۱۳ پرامپت مادر) Router خود را اینجا اضافه می‌کند.
   app.use("/api/auth", authRouter);
   app.use("/api/categories", categoriesRouter);
+  app.use("/api/seller/products", productsRouter);
 
   // --- 404 ---
   app.use((req, _res, next) => {
