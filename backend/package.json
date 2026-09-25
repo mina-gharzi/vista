@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@vista/shared": "workspace:*",
@@ -39,5 +40,8 @@
     "tsx": "^4.19.1",
     "typescript": "^5.5.4",
     "vitest": "^2.1.1"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

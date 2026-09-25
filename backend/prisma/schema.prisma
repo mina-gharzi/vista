@@ -105,16 +105,22 @@ model Address {
 // ---------------------------------------------------------------------------
 
 model Category {
-  id       String     @id @default(uuid())
-  name     String
-  slug     String     @unique
-  parentId String?
-  parent   Category?  @relation("CategoryToParent", fields: [parentId], references: [id], onDelete: Restrict)
-  children Category[] @relation("CategoryToParent")
+  id        String     @id @default(uuid())
+  name      String
+  slug      String     @unique
+  imageUrl  String?
+  // نمایش عمومی محدود به isActive=true؛ حذف Category بعد از انتشار (وجود Product) مجاز نیست
+  isActive  Boolean    @default(true)
+  // ترتیب نمایش در Nav/Listing (کوچک‌تر = اول)
+  sortOrder Int        @default(0)
+  parentId  String?
+  parent    Category?  @relation("CategoryToParent", fields: [parentId], references: [id], onDelete: Restrict)
+  children  Category[] @relation("CategoryToParent")
 
   products Product[]
 
   @@index([parentId])
+  @@index([isActive, sortOrder])
   @@map("categories")
 }
 
