@@ -1,0 +1,400 @@
+// VISTA — Database Schema
+// طبق بخش ۱۵ پرامپت مادر: Normalize، Constraint، Foreign Key، Unique و Index مناسب.
+//
+// قرارداد پولی: تمام مبالغ «عدد صحیح به واحد تومان» هستند (Int) — بدون اعشار و بدون خطای Float.
+// Constraintهایی که Prisma بیان نمی‌کند (CHECK) در فایل Migration به‌صورت SQL خام اضافه می‌شوند
+// (نگاه کنید به backend/prisma/checks.sql).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth & Users
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  CUSTOMER
+  SELLER
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  role         UserRole @default(CUSTOMER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  seller        Seller?
+  cart          Cart?
+  wishlist      Wishlist?
+  orders             Order[]
+  reviews            Review[]
+  addresses          Address[]
+  refreshTokens      RefreshToken[]
+  inventoryMovements InventoryMovement[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // هش توکن ذخیره می‌شود، نه مقدار خام (بخش ۱۸ پرامپت مادر)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+enum SellerStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+}
+
+model Seller {
+  id          String       @id @default(uuid())
+  userId      String       @unique
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeName   String
+  storeSlug   String       @unique
+  description String?
+  status      SellerStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  products     Product[]
+  sellerOrders SellerOrder[]
+
+  @@map("sellers")
+}
+
+model Address {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName   String
+  phone      String
+  province   String
+  city       String
+  postalCode String
+  addressLine String
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+// ---------------------------------------------------------------------------
+// Catalog
+// ---------------------------------------------------------------------------
+
+model Category {
+  id       String     @id @default(uuid())
+  name     String
+  slug     String     @unique
+  parentId String?
+  parent   Category?  @relation("CategoryToParent", fields: [parentId], references: [id], onDelete: Restrict)
+  children Category[] @relation("CategoryToParent")
+
+  products Product[]
+
+  @@index([parentId])
+  @@map("categories")
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Product {
+  id          String        @id @default(uuid())
+  sellerId    String
+  seller      Seller        @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  categoryId  String
+  category    Category      @relation(fields: [categoryId], references: [id])
+  title       String
+  slug        String        @unique
+  description String
+  // قیمت فروش فعلی (تومان). قیمت مؤثر هر Variant = variant.price ?? product.basePrice
+  basePrice   Int
+  // قیمت قبل از تخفیف (خط‌خورده). null یعنی محصول تخفیف ندارد. باید > basePrice باشد (CHECK)
+  compareAtPrice Int?
+  status      ProductStatus @default(DRAFT)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  variants   ProductVariant[]
+  images     ProductImage[]
+  reviews    Review[]
+  wishlisted WishlistItem[]
+
+  @@index([sellerId])
+  @@index([categoryId])
+  // Catalog: فقط محصولات منتشرشده، جدیدترین‌ها اول
+  @@index([status, createdAt])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  position  Int     @default(0)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+// Source of Truth موجودی طبق بخش ۱۷ پرامپت مادر — Frontend هرگز مستقیم موجودی را تغییر نمی‌دهد
+model ProductVariant {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku       String   @unique
+  size      String
+  color     String
+  // اگر null باشد، basePrice محصول اصلی ملاک است (تومان)
+  price     Int?
+  // همیشه >= 0 (CHECK). فقط از طریق Backend و داخل Transaction تغییر می‌کند
+  stock     Int      @default(0)
+  // برای جلوگیری از Race Condition در کسر موجودی همزمان (Optimistic Locking)
+  version   Int      @default(0)
+
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+  inventoryMovements InventoryMovement[]
+
+  @@unique([productId, size, color])
+  @@index([productId])
+  @@map("product_variants")
+}
+
+// ---------------------------------------------------------------------------
+// Cart & Wishlist
+// ---------------------------------------------------------------------------
+
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String         @id @default(uuid())
+  cartId    String
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity  Int
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([cartId, variantId])
+  @@map("cart_items")
+}
+
+model Wishlist {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items WishlistItem[]
+
+  @@map("wishlists")
+}
+
+model WishlistItem {
+  id         String   @id @default(uuid())
+  wishlistId String
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([wishlistId, productId])
+  @@map("wishlist_items")
+}
+
+// ---------------------------------------------------------------------------
+// Inventory
+// ---------------------------------------------------------------------------
+
+enum InventoryMovementType {
+  INITIAL // موجودی اولیه هنگام ساخت Variant
+  RESTOCK // افزایش توسط فروشنده
+  ADJUSTMENT // اصلاح دستی (شمارش انبار، خطا)
+  ORDER_PLACED // کسر بابت ثبت سفارش
+  ORDER_CANCELLED // برگشت بابت لغو سفارش
+  RETURN // برگشت کالا
+}
+
+// دفتر کل تغییرات موجودی (Inventory History) — رکوردها هرگز ویرایش یا حذف نمی‌شوند
+model InventoryMovement {
+  id            String                @id @default(uuid())
+  variantId     String
+  variant       ProductVariant        @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  type          InventoryMovementType
+  // مثبت = افزایش، منفی = کاهش
+  quantityDelta Int
+  // موجودی Variant بعد از اعمال همین تغییر (برای Audit سریع)
+  stockAfter    Int
+  reason        String?
+  // کسی که تغییر را انجام داده (فروشنده/ادمین/خود مشتری هنگام سفارش)
+  actorId       String?
+  actor         User?                 @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  // ارجاع نرم به سفارش (بدون FK تا با حذف/آرشیو سفارش، تاریخچه انبار دست‌نخورده بماند)
+  orderId       String?
+  createdAt     DateTime              @default(now())
+
+  @@index([variantId, createdAt])
+  @@map("inventory_movements")
+}
+
+// ---------------------------------------------------------------------------
+// Orders (Multi-Vendor)
+// ---------------------------------------------------------------------------
+//
+// یک Order = یک پرداخت مشتری. اگر سبد شامل کالای چند فروشنده باشد، Order به چند SellerOrder
+// تقسیم می‌شود تا هر فروشنده وضعیت ارسال مستقل خودش را داشته باشد.
+//   Order.status        → وضعیت پرداخت/چرخه کلی سفارش
+//   SellerOrder.status  → وضعیت آماده‌سازی و ارسال بخش همان فروشنده
+
+enum OrderStatus {
+  PENDING // ثبت شده، در انتظار پرداخت
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum FulfillmentStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  // شماره سفارش قابل‌نمایش به مشتری
+  orderNumber Int         @unique @default(autoincrement())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  status      OrderStatus @default(PENDING)
+
+  // مبالغ فقط از Server محاسبه می‌شوند، هرگز از Client پذیرفته نمی‌شوند (تومان)
+  subtotal       Int
+  shippingCost   Int @default(0)
+  discountAmount Int @default(0)
+  totalAmount    Int
+
+  // Snapshot آدرس در لحظه ثبت — ویرایش/حذف Address بعدی روی سفارش قبلی اثر ندارد
+  shippingFullName    String
+  shippingPhone       String
+  shippingProvince    String
+  shippingCity        String
+  shippingPostalCode  String
+  shippingAddressLine String
+
+  paymentRef String?
+  paidAt     DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  sellerOrders SellerOrder[]
+
+  @@index([userId, createdAt])
+  @@map("orders")
+}
+
+model SellerOrder {
+  id           String            @id @default(uuid())
+  orderId      String
+  order        Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sellerId     String
+  seller       Seller            @relation(fields: [sellerId], references: [id])
+  status       FulfillmentStatus @default(PENDING)
+  // جمع مبلغ کالاهای همین فروشنده (تومان)
+  subtotal     Int
+  trackingCode String?
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  items OrderItem[]
+
+  // در هر سفارش، برای هر فروشنده فقط یک SellerOrder
+  @@unique([orderId, sellerId])
+  @@index([sellerId, status, createdAt])
+  @@map("seller_orders")
+}
+
+model OrderItem {
+  id            String         @id @default(uuid())
+  sellerOrderId String
+  sellerOrder   SellerOrder    @relation(fields: [sellerOrderId], references: [id], onDelete: Cascade)
+  // Restrict (پیش‌فرض): Variantی که در سفارش استفاده شده حذف نمی‌شود؛ به‌جای حذف، محصول ARCHIVED می‌شود
+  variantId     String
+  variant       ProductVariant @relation(fields: [variantId], references: [id])
+  quantity      Int
+  // Snapshot در لحظه سفارش — تغییر بعدی قیمت/عنوان/سایز روی سفارش قبلی اثر ندارد
+  unitPrice     Int
+  productTitle  String
+  sku           String
+  size          String
+  color         String
+  imageUrl      String?
+  createdAt     DateTime       @default(now())
+
+  @@index([sellerOrderId])
+  @@index([variantId])
+  @@map("order_items")
+}
+
+// ---------------------------------------------------------------------------
+// Reviews
+// ---------------------------------------------------------------------------
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  // ۱ تا ۵ (CHECK)
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@map("reviews")
+}

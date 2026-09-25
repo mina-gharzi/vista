@@ -1,0 +1,35 @@
+{
+  "name": "vista-marketplace",
+  "private": true,
+  "version": "0.1.0",
+  "description": "VISTA - Multi-Vendor Fashion Marketplace",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "postinstall": "pnpm --filter @vista/shared build",
+    "dev:shared": "pnpm --filter @vista/shared dev",
+    "dev:backend": "pnpm --filter @vista/backend dev",
+    "dev:frontend": "pnpm --filter @vista/frontend dev",
+    "build": "pnpm --filter @vista/shared build && pnpm --filter @vista/backend build && pnpm --filter @vista/frontend build",
+    "typecheck": "pnpm --filter @vista/shared build && pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm -r --if-present test",
+    "prisma:generate": "pnpm --filter @vista/backend prisma:generate",
+    "prisma:migrate": "pnpm --filter @vista/backend prisma:migrate"
+  },
+  "devDependencies": {
+    "@eslint/compat": "^1.2.0",
+    "@eslint/js": "^9.11.0",
+    "@next/eslint-plugin-next": "^14.2.13",
+    "eslint": "^9.11.0",
+    "eslint-plugin-jsx-a11y": "^6.10.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^15.9.0",
+    "prettier": "^3.3.3",
+    "typescript-eslint": "^8.6.0"
+  }
+}

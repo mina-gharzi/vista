@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    direction: rtl;
+  }
+
+  body {
+    @apply bg-ivory text-ink font-sans antialiased;
+  }
+
+  /* Focus State قابل مشاهده برای Accessibility (بخش ۱۲ پرامپت مادر) */
+  :focus-visible {
+    outline: 2px solid theme("colors.bordeaux.DEFAULT");
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: theme("colors.bordeaux.tint");
+  }
+
+  /* احترام به تنظیم «کاهش حرکت» سیستم‌عامل */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Typography Hierarchy: H1, H2, H3, Body, Caption, Label, Price, Button */
+@layer components {
+  .type-h1 {
+    @apply text-3xl font-semibold tracking-tight md:text-4xl;
+  }
+  .type-h2 {
+    @apply text-2xl font-semibold md:text-3xl;
+  }
+  .type-h3 {
+    @apply text-xl font-semibold;
+  }
+  .type-body {
+    @apply text-base;
+  }
+  .type-caption {
+    @apply text-xs text-ink-muted;
+  }
+  .type-label {
+    @apply text-sm font-medium;
+  }
+  .type-price {
+    @apply text-lg font-semibold tabular-nums;
+  }
+  .type-button {
+    @apply text-sm font-medium;
+  }
+}
