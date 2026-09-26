@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Card, EmptyState } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { ApiRequestError } from "@/lib/api/client";
+import { catalogApi } from "@/lib/api/catalog";
 import { categoriesApi } from "@/lib/api/categories";
+import { ProductGrid } from "@/components/product/ProductGrid";
 
 export const dynamic = "force-dynamic";
 
@@ -54,8 +56,8 @@ export default async function CategoryDetailPage({ params }: CategoryPageProps) 
 
       <h1 className="type-h1 mb-8">{category.name}</h1>
 
-      {category.children.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {category.children.length > 0 && (
+        <div className="mb-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {category.children.map((child) => (
             <Card key={child.id} padding="lg">
               <Link href={`/categories/${child.slug}`} className="type-h3 hover:text-bordeaux">
@@ -64,13 +66,12 @@ export default async function CategoryDetailPage({ params }: CategoryPageProps) 
             </Card>
           ))}
         </div>
-      ) : (
-        // Product Catalog در Feature بعدی این بخش را با فهرست محصولات جایگزین می‌کند
-        <EmptyState
-          title="محصولی هنوز اضافه نشده"
-          description="محصولات این دسته به‌زودی نمایش داده می‌شود."
-        />
       )}
+
+      {/* برای دسته‌های میانی (با زیردسته) هم محصولات مستقیم همان دسته نمایش داده می‌شود */}
+      <ProductGrid
+        products={(await catalogApi.list({ category: category.slug, limit: 24 })).data}
+      />
     </main>
   );
 }

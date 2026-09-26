@@ -8,6 +8,7 @@ import { createRateLimiter } from "./middlewares/rateLimit";
 import { authRouter } from "./modules/auth";
 import { categoriesRouter } from "./modules/categories";
 import { productsRouter } from "./modules/products";
+import { catalogRouter } from "./modules/catalog";
 import { NotFoundError } from "./errors/AppError";
 
 export function createApp(): Express {
@@ -37,6 +38,7 @@ export function createApp(): Express {
   app.use("/api/auth", authRouter);
   app.use("/api/categories", categoriesRouter);
   app.use("/api/seller/products", productsRouter);
+  app.use("/api/products", catalogRouter);
 
   // --- 404 ---
   app.use((req, _res, next) => {

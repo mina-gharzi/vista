@@ -5,3 +5,5 @@ export * from "./types/category";
 export * from "./schemas/category.schema";
 export * from "./types/product";
 export * from "./schemas/product.schema";
+export * from "./types/catalog";
+export * from "./schemas/catalog.schema";
