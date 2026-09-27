@@ -21,13 +21,18 @@ export function HeaderAuthArea() {
   }
 
   return (
-    <Dropdown
-      label={user?.fullName.split(" ")[0] ?? "حساب کاربری"}
-      align="end"
-      items={[
-        { key: "account", label: "حساب کاربری", href: "/account" },
-        { key: "logout", label: "خروج", tone: "danger", onSelect: () => void logout() },
-      ]}
-    />
+    <div className="flex items-center gap-2">
+      <Link href="/cart" className="type-button rounded px-3 py-2 hover:bg-ivory-soft">
+        سبد خرید
+      </Link>
+      <Dropdown
+        label={user?.fullName.split(" ")[0] ?? "حساب کاربری"}
+        align="end"
+        items={[
+          { key: "account", label: "حساب کاربری", href: "/account" },
+          { key: "logout", label: "خروج", tone: "danger", onSelect: () => void logout() },
+        ]}
+      />
+    </div>
   );
 }

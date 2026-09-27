@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge, Card } from "@/components/ui";
+import { AddToCartForm } from "@/features/cart/components/AddToCartForm";
 import { catalogApi } from "@/lib/api/catalog";
 import { ApiRequestError } from "@/lib/api/client";
 import { formatPrice } from "@/lib/utils/format";
@@ -143,7 +144,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             )}
           </Card>
 
-          {/* افزودن به سبد خرید — در Feature «Cart» اضافه می‌شود */}
+          <AddToCartForm variants={product.variants} />
         </div>
       </div>
     </main>

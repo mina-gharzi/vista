@@ -9,6 +9,7 @@ import { authRouter } from "./modules/auth";
 import { categoriesRouter } from "./modules/categories";
 import { productsRouter } from "./modules/products";
 import { catalogRouter } from "./modules/catalog";
+import { cartRouter } from "./modules/cart";
 import { NotFoundError } from "./errors/AppError";
 
 export function createApp(): Express {
@@ -39,6 +40,7 @@ export function createApp(): Express {
   app.use("/api/categories", categoriesRouter);
   app.use("/api/seller/products", productsRouter);
   app.use("/api/products", catalogRouter);
+  app.use("/api/cart", cartRouter);
 
   // --- 404 ---
   app.use((req, _res, next) => {

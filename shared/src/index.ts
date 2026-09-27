@@ -7,3 +7,5 @@ export * from "./types/product";
 export * from "./schemas/product.schema";
 export * from "./types/catalog";
 export * from "./schemas/catalog.schema";
+export * from "./types/cart";
+export * from "./schemas/cart.schema";
