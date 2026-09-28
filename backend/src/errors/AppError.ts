@@ -47,8 +47,11 @@ export class NotFoundError extends AppError {
 }
 
 export class ConflictError extends AppError {
-  constructor(message = "این عملیات با وضعیت فعلی داده‌ها تداخل دارد") {
-    super(message, 409, "CONFLICT_ERROR");
+  constructor(
+    message = "این عملیات با وضعیت فعلی داده‌ها تداخل دارد",
+    details?: Record<string, string[]>,
+  ) {
+    super(message, 409, "CONFLICT_ERROR", details);
   }
 }
 

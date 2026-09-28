@@ -10,6 +10,8 @@ import { categoriesRouter } from "./modules/categories";
 import { productsRouter } from "./modules/products";
 import { catalogRouter } from "./modules/catalog";
 import { cartRouter } from "./modules/cart";
+import { addressesRouter } from "./modules/addresses";
+import { checkoutRouter, ordersRouter } from "./modules/orders";
 import { NotFoundError } from "./errors/AppError";
 
 export function createApp(): Express {
@@ -41,6 +43,9 @@ export function createApp(): Express {
   app.use("/api/seller/products", productsRouter);
   app.use("/api/products", catalogRouter);
   app.use("/api/cart", cartRouter);
+  app.use("/api/addresses", addressesRouter);
+  app.use("/api/checkout", checkoutRouter);
+  app.use("/api/orders", ordersRouter);
 
   // --- 404 ---
   app.use((req, _res, next) => {

@@ -74,7 +74,11 @@ export function CartView() {
             برای ادامه، کالاهای با موجودی ناکافی را از سبد حذف یا تعدادشان را اصلاح کنید.
           </p>
         )}
-        {/* دکمه ادامه فرآیند خرید — در Feature «Checkout» اضافه می‌شود */}
+        <Link href="/checkout">
+          <Button fullWidth size="lg" disabled={hasUnavailable}>
+            ادامه فرآیند خرید
+          </Button>
+        </Link>
       </Card>
     </div>
   );

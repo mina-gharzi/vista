@@ -30,6 +30,7 @@ export function HeaderAuthArea() {
         align="end"
         items={[
           { key: "account", label: "حساب کاربری", href: "/account" },
+          { key: "orders", label: "سفارش‌های من", href: "/orders" },
           { key: "logout", label: "خروج", tone: "danger", onSelect: () => void logout() },
         ]}
       />
