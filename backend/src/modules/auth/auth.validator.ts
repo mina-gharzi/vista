@@ -1,1 +1,6 @@
-export { loginSchema, registerSchema } from "@vista/shared";
+export {
+  changePasswordSchema,
+  loginSchema,
+  registerSchema,
+  updateProfileSchema,
+} from "@vista/shared";

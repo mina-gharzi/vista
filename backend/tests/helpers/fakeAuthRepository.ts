@@ -37,6 +37,22 @@ export class FakeAuthRepository implements AuthRepository {
     return user;
   }
 
+  async updateProfile(
+    id: string,
+    data: { fullName?: string | undefined; phone?: string | null | undefined },
+  ) {
+    const user = this.users.get(id);
+    if (!user) throw new Error("test setup error: user not found");
+    if (data.fullName !== undefined) user.fullName = data.fullName;
+    if (data.phone !== undefined) user.phone = data.phone;
+    return user;
+  }
+
+  async updatePasswordHash(id: string, passwordHash: string) {
+    const user = this.users.get(id);
+    if (user) user.passwordHash = passwordHash;
+  }
+
   async createRefreshToken(data: NewRefreshToken) {
     this.tokens.push({ id: randomUUID(), revokedAt: null, ...data });
   }

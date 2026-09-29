@@ -1,6 +1,12 @@
 "use client";
 
-import type { AuthUser, LoginInput, RegisterInput } from "@vista/shared";
+import type {
+  AuthUser,
+  ChangePasswordInput,
+  LoginInput,
+  RegisterInput,
+  UpdateProfileInput,
+} from "@vista/shared";
 import {
   createContext,
   useCallback,
@@ -21,6 +27,8 @@ interface AuthContextValue {
   user: AuthUser | null;
   login: (input: LoginInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
+  updateProfile: (input: UpdateProfileInput) => Promise<void>;
+  changePassword: (input: ChangePasswordInput) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -76,6 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [startSession],
   );
 
+  const updateProfile = useCallback(async (input: UpdateProfileInput) => {
+    setUser(await authApi.updateProfile(input));
+  }, []);
+
+  const changePassword = useCallback(
+    async (input: ChangePasswordInput) => startSession(await authApi.changePassword(input)),
+    [startSession],
+  );
+
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
@@ -89,8 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ status, user, login, register, logout }),
-    [status, user, login, register, logout],
+    () => ({ status, user, login, register, updateProfile, changePassword, logout }),
+    [status, user, login, register, updateProfile, changePassword, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

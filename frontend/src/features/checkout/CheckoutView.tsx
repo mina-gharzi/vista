@@ -117,7 +117,7 @@ export function CheckoutView() {
           )}
 
           {showAddForm ? (
-            <AddressForm onCreated={handleAddressCreated} onCancel={() => setShowAddForm(false)} />
+            <AddressForm onSaved={handleAddressCreated} onCancel={() => setShowAddForm(false)} />
           ) : (
             <Button type="button" variant="secondary" onClick={() => setShowAddForm(true)}>
               افزودن آدرس جدید

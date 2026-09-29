@@ -1,5 +1,10 @@
 import type { Request, RequestHandler, Response } from "express";
-import type { LoginInput, RegisterInput } from "@vista/shared";
+import type {
+  ChangePasswordInput,
+  LoginInput,
+  RegisterInput,
+  UpdateProfileInput,
+} from "@vista/shared";
 import { getAuth } from "../../middlewares/requireAuth";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { sendSuccess } from "../../utils/response";
@@ -22,6 +27,8 @@ export interface AuthController {
   refresh: RequestHandler;
   logout: RequestHandler;
   me: RequestHandler;
+  updateMe: RequestHandler;
+  changePassword: RequestHandler;
 }
 
 export function createAuthController(service: AuthService): AuthController {
@@ -55,6 +62,16 @@ export function createAuthController(service: AuthService): AuthController {
 
     me: asyncHandler(async (req, res) => {
       sendSuccess(res, await service.getCurrentUser(getAuth(req).userId));
+    }),
+
+    updateMe: asyncHandler(async (req, res) => {
+      const input = req.body as UpdateProfileInput;
+      sendSuccess(res, await service.updateProfile(getAuth(req).userId, input));
+    }),
+
+    changePassword: asyncHandler(async (req, res) => {
+      const input = req.body as ChangePasswordInput;
+      respondWithSession(res, await service.changePassword(getAuth(req).userId, input));
     }),
   };
 }

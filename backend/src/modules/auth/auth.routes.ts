@@ -4,7 +4,12 @@ import { requireAuth } from "../../middlewares/requireAuth";
 import { requireTrustedOrigin } from "../../middlewares/requireTrustedOrigin";
 import { validate } from "../../middlewares/validate";
 import type { AuthController } from "./auth.controller";
-import { loginSchema, registerSchema } from "./auth.validator";
+import {
+  changePasswordSchema,
+  loginSchema,
+  registerSchema,
+  updateProfileSchema,
+} from "./auth.validator";
 
 export function createAuthRouter(controller: AuthController): Router {
   const router = Router();
@@ -23,6 +28,15 @@ export function createAuthRouter(controller: AuthController): Router {
   router.post("/refresh", refreshLimiter, requireTrustedOrigin, controller.refresh);
   router.post("/logout", requireTrustedOrigin, controller.logout);
   router.get("/me", requireAuth, controller.me);
+  router.patch("/me", requireAuth, validate(updateProfileSchema, "body"), controller.updateMe);
+  router.post(
+    "/change-password",
+    credentialsLimiter,
+    requireAuth,
+    requireTrustedOrigin,
+    validate(changePasswordSchema, "body"),
+    controller.changePassword,
+  );
 
   return router;
 }

@@ -36,6 +36,12 @@ export interface AuthRepository {
     fullName: string;
     phone: string | null;
   }): Promise<UserRecord>;
+  /** فقط فیلدهای مجاز پروفایل؛ ایمیل/نقش عمداً قابل ویرایش نیستند */
+  updateProfile(
+    id: string,
+    data: { fullName?: string | undefined; phone?: string | null | undefined },
+  ): Promise<UserRecord>;
+  updatePasswordHash(id: string, passwordHash: string): Promise<void>;
   createRefreshToken(data: NewRefreshToken): Promise<void>;
   findRefreshToken(tokenHash: string): Promise<RefreshTokenRecord | null>;
   /** اتمیک: توکن قدیمی را Revoke و توکن جدید را می‌سازد. اگر توکن قدیمی از قبل Revoke شده باشد false. */
@@ -69,6 +75,18 @@ export function createAuthRepository(prisma: PrismaClient): AuthRepository {
         }
         throw error;
       }
+    },
+
+    async updateProfile(id, data) {
+      // فیلد به فیلد ساخته می‌شود (exactOptionalPropertyTypes با Spread سازگار نیست)
+      const patch: { fullName?: string; phone?: string | null } = {};
+      if (data.fullName !== undefined) patch.fullName = data.fullName;
+      if (data.phone !== undefined) patch.phone = data.phone;
+      return prisma.user.update({ where: { id }, data: patch });
+    },
+
+    async updatePasswordHash(id, passwordHash) {
+      await prisma.user.update({ where: { id }, data: { passwordHash } });
     },
 
     async createRefreshToken(data) {

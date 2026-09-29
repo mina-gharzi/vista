@@ -1,6 +1,6 @@
 "use client";
 
-import type { AddressInput } from "@vista/shared";
+import type { AddressInput, AddressSummary } from "@vista/shared";
 import { addressInputSchema } from "@vista/shared";
 import { useState, type FormEvent } from "react";
 import { Button, Checkbox, Input } from "@/components/ui";
@@ -9,7 +9,9 @@ import { ApiRequestError } from "@/lib/api/client";
 import { firstBackendErrors, firstFieldErrors } from "@/lib/utils/zod";
 
 interface AddressFormProps {
-  onCreated: (input: AddressInput & { id: string }) => void;
+  /** اگر داده شود فرم در حالت «ویرایش» است، وگرنه «آدرس جدید» */
+  initial?: AddressSummary;
+  onSaved: (address: AddressSummary) => void;
   onCancel: () => void;
 }
 
@@ -23,8 +25,20 @@ const emptyForm: AddressInput = {
   isDefault: false,
 };
 
-export function AddressForm({ onCreated, onCancel }: AddressFormProps) {
-  const [values, setValues] = useState(emptyForm);
+export function AddressForm({ initial, onSaved, onCancel }: AddressFormProps) {
+  const [values, setValues] = useState<AddressInput>(
+    initial
+      ? {
+          fullName: initial.fullName,
+          phone: initial.phone,
+          province: initial.province,
+          city: initial.city,
+          postalCode: initial.postalCode,
+          addressLine: initial.addressLine,
+          isDefault: initial.isDefault,
+        }
+      : emptyForm,
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -45,8 +59,10 @@ export function AddressForm({ onCreated, onCancel }: AddressFormProps) {
 
     setSubmitting(true);
     try {
-      const created = await addressesApi.create(parsed.data);
-      onCreated({ ...parsed.data, id: created.id });
+      const saved = initial
+        ? await addressesApi.update(initial.id, parsed.data)
+        : await addressesApi.create(parsed.data);
+      onSaved(saved);
     } catch (error) {
       if (error instanceof ApiRequestError) {
         const backendErrors = firstBackendErrors(error.details);

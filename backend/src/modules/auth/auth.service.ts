@@ -1,6 +1,13 @@
-import type { AuthSession, AuthUser, LoginInput, RegisterInput } from "@vista/shared";
+import type {
+  AuthSession,
+  AuthUser,
+  ChangePasswordInput,
+  LoginInput,
+  RegisterInput,
+  UpdateProfileInput,
+} from "@vista/shared";
 import { env } from "../../config/env";
-import { AuthenticationError, ConflictError } from "../../errors/AppError";
+import { AuthenticationError, ConflictError, ValidationError } from "../../errors/AppError";
 import { getDummyHash, hashPassword, verifyPassword } from "../../utils/password";
 import { generateRefreshToken, hashRefreshToken, signAccessToken } from "../../utils/tokens";
 import type { AuthRepository, UserRecord } from "./auth.repository";
@@ -119,6 +126,39 @@ export function createAuthService(repo: AuthRepository, now: () => Date = () => 
     async logout(refreshToken: string | undefined): Promise<void> {
       if (!refreshToken) return;
       await repo.revokeRefreshToken(hashRefreshToken(refreshToken));
+    },
+
+    async updateProfile(userId: string, input: UpdateProfileInput): Promise<AuthUser> {
+      const user = await repo.findUserById(userId);
+      if (!user) {
+        throw new AuthenticationError("حساب کاربری یافت نشد");
+      }
+      return toAuthUser(await repo.updateProfile(userId, input));
+    },
+
+    /**
+     * تغییر رمز: همه نشست‌های قبلی (سایر دستگاه‌ها) باطل و برای همین دستگاه نشست تازه ساخته می‌شود.
+     * رمز فعلی اشتباه 400 است نه 401 — چون Client روی 401 فکر می‌کند Access Token منقضی شده و Refresh می‌زند.
+     */
+    async changePassword(userId: string, input: ChangePasswordInput): Promise<AuthResult> {
+      const user = await repo.findUserById(userId);
+      if (!user) {
+        throw new AuthenticationError("حساب کاربری یافت نشد");
+      }
+
+      if (!(await verifyPassword(user.passwordHash, input.currentPassword))) {
+        throw new ValidationError("رمز فعلی نادرست است", {
+          currentPassword: ["رمز فعلی نادرست است"],
+        });
+      }
+
+      await repo.updatePasswordHash(userId, await hashPassword(input.newPassword));
+      await repo.revokeAllUserTokens(userId);
+      const fresh = await repo.findUserById(userId);
+      if (!fresh) {
+        throw new AuthenticationError("حساب کاربری یافت نشد");
+      }
+      return startSession(fresh);
     },
 
     async getCurrentUser(userId: string): Promise<AuthUser> {
