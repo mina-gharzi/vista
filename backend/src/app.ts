@@ -12,6 +12,7 @@ import { catalogRouter } from "./modules/catalog";
 import { cartRouter } from "./modules/cart";
 import { addressesRouter } from "./modules/addresses";
 import { checkoutRouter, ordersRouter } from "./modules/orders";
+import { wishlistRouter } from "./modules/wishlist";
 import { NotFoundError } from "./errors/AppError";
 
 export function createApp(): Express {
@@ -46,6 +47,7 @@ export function createApp(): Express {
   app.use("/api/addresses", addressesRouter);
   app.use("/api/checkout", checkoutRouter);
   app.use("/api/orders", ordersRouter);
+  app.use("/api/wishlist", wishlistRouter);
 
   // --- 404 ---
   app.use((req, _res, next) => {

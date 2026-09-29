@@ -22,6 +22,9 @@ export function HeaderAuthArea() {
 
   return (
     <div className="flex items-center gap-2">
+      <Link href="/wishlist" className="type-button rounded px-3 py-2 hover:bg-ivory-soft">
+        علاقه‌مندی‌ها
+      </Link>
       <Link href="/cart" className="type-button rounded px-3 py-2 hover:bg-ivory-soft">
         سبد خرید
       </Link>

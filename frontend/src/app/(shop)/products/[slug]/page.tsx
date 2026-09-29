@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge, Card } from "@/components/ui";
 import { AddToCartForm } from "@/features/cart/components/AddToCartForm";
+import { WishlistButton } from "@/features/wishlist/WishlistButton";
 import { catalogApi } from "@/lib/api/catalog";
 import { ApiRequestError } from "@/lib/api/client";
 import { formatPrice } from "@/lib/utils/format";
@@ -144,7 +145,12 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             )}
           </Card>
 
-          <AddToCartForm variants={product.variants} />
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <AddToCartForm variants={product.variants} />
+            </div>
+            <WishlistButton productId={product.id} />
+          </div>
         </div>
       </div>
     </main>
