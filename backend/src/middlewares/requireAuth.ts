@@ -22,6 +22,27 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
   }
 }
 
+/**
+ * مثل requireAuth ولی هیچ‌وقت رد نمی‌کند — برای Endpointهای عمومی که رفتارشان بسته به «کاربر واردشده
+ * است یا نه» کمی فرق می‌کند (مثلاً نمایش دکمه ویرایش روی ریویوی خودِ کاربر در فهرست عمومی ریویوها).
+ * توکن نامعتبر/منقضی هم مثل نبودن توکن با آن رفتار می‌شود (req.auth پر نمی‌شود)، نه خطا.
+ */
+export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
+  const header = req.get("authorization");
+  const [scheme, token] = header?.split(" ") ?? [];
+
+  if (scheme?.toLowerCase() === "bearer" && token) {
+    try {
+      const { userId, role } = verifyAccessToken(token);
+      req.auth = { userId, role };
+    } catch {
+      // توکن نامعتبر در مسیر عمومی نباید کل درخواست را رد کند؛ فقط به‌عنوان «مهمان» ادامه می‌دهیم
+    }
+  }
+
+  next();
+}
+
 /** باید بعد از requireAuth استفاده شود. Authorization در Backend اعمال می‌شود، نه Frontend. */
 export function requireRole(...roles: UserRole[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {

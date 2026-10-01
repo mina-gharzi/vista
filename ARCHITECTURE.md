@@ -244,4 +244,14 @@ Feature «Wishlist» کامل شد (اولین Feature از Phase 2):
 - Frontend: `WishlistButton` (آیکون قلب، Optimistic Update) کنار دکمه افزودن به سبد در صفحه محصول؛
   صفحه `/wishlist`؛ لینک در Header. برخلاف Cart، وضعیت Wishlist روی کارت‌های فهرست محصولات نشان داده
   نمی‌شود (فقط صفحه جزئیات و صفحه خود Wishlist) — جلوگیری از یک درخواست اضافه به‌ازای هر کارت در Catalog.
-گام بعدی: Reviews، سپس Seller Account/Dashboard (جایگزینی فروشنده Demo با ثبت‌نام واقعی).
+Feature «Reviews» کامل شد:
+- Backend: ماژول `reviews` با دو Router — یکی تودرتوی محصول (`/api/products/:productId/reviews`:
+  `GET` عمومی با `optionalAuth` تازه اضافه‌شده در `requireAuth.ts` تا `isMine` برای بیننده واردشده پر شود
+  ولی مهمان هم ببیند؛ `POST` نیازمند ورود) و یکی مستقل (`/api/reviews/:id` برای `PATCH`/`DELETE`، فقط مالک).
+  جلوگیری از ریویوی جعلی: ثبت نظر فقط اگر کاربر سفارش PAID شامل همان محصول داشته باشد (Join از
+  OrderItem→SellerOrder→Order)، وگرنه ۴۰۳. یک نظر به‌ازای هر (کاربر، محصول) — دومی ۴۰۹ می‌دهد.
+- Frontend: `RatingStars` (نمایش فقط‌خواندنی ⭐، فقط در صفحه جزئیات محصول — نه روی کارت‌های Catalog، برای
+  پرهیز از N+1 Request مثل تصمیم مشابه در Wishlist)، `ReviewsSection` زیر هر محصول (فهرست + فرم ثبت/ویرایش
+  + حذف با تأیید). اگر کاربر هنوز خرید نکرده باشد، فرم را می‌بیند ولی ارسال با پیام «فقط خریداران...» رد
+  می‌شود — به‌جای ساختن Endpoint جداگانه برای «آیا خریده‌ام»، همان خطای POST پیام را نشان می‌دهد.
+گام بعدی: Seller Account/Dashboard (جایگزینی فروشنده Demo با ثبت‌نام واقعی، Phase 3 نزدیک می‌شود).

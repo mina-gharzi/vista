@@ -15,3 +15,5 @@ export * from "./types/order";
 export * from "./schemas/checkout.schema";
 export * from "./types/wishlist";
 export * from "./schemas/wishlist.schema";
+export * from "./types/review";
+export * from "./schemas/review.schema";

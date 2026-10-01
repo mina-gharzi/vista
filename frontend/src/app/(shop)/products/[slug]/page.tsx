@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge, Card } from "@/components/ui";
 import { AddToCartForm } from "@/features/cart/components/AddToCartForm";
 import { WishlistButton } from "@/features/wishlist/WishlistButton";
+import { ReviewsSection } from "@/features/reviews/ReviewsSection";
 import { catalogApi } from "@/lib/api/catalog";
 import { ApiRequestError } from "@/lib/api/client";
 import { formatPrice } from "@/lib/utils/format";
@@ -152,6 +153,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <WishlistButton productId={product.id} />
           </div>
         </div>
+      </div>
+
+      <div className="mt-12 border-t border-border pt-10">
+        <ReviewsSection productId={product.id} />
       </div>
     </main>
   );
