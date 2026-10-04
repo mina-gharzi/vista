@@ -64,6 +64,8 @@ enum SellerStatus {
   PENDING
   APPROVED
   SUSPENDED
+  // درخواست رد شده؛ کاربر می‌تواند با اصلاح اطلاعات دوباره درخواست دهد (همان رکورد Seller به PENDING برمی‌گردد)
+  REJECTED
 }
 
 model Seller {

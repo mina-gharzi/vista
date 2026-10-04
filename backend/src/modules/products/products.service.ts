@@ -36,7 +36,9 @@ async function requireApprovedSeller(
   if (seller.status === "SUSPENDED") {
     throw new AuthorizationError("حساب فروشندگی شما مسدود شده است");
   }
-  if (seller.status === "PENDING") {
+  // هر وضعیتی جز APPROVED (PENDING یا REJECTED) اجازه مدیریت محصول ندارد؛
+  // بررسی «نه APPROVED» امن‌تر از فهرست وضعیت‌های ممنوع است (وضعیت جدید به‌طور پیش‌فرض بسته می‌ماند)
+  if (seller.status !== "APPROVED") {
     throw new AuthorizationError("حساب فروشندگی شما هنوز تأیید نشده است");
   }
   return seller.id;

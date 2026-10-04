@@ -34,6 +34,12 @@ export function HeaderAuthArea() {
         items={[
           { key: "account", label: "حساب کاربری", href: "/account" },
           { key: "orders", label: "سفارش‌های من", href: "/orders" },
+          ...(user?.role === "CUSTOMER"
+            ? [{ key: "seller-apply", label: "شروع فروش در ویستا", href: "/seller/apply" }]
+            : []),
+          ...(user?.role === "SELLER"
+            ? [{ key: "seller-dashboard", label: "پنل فروشنده", href: "/seller/dashboard" }]
+            : []),
           { key: "logout", label: "خروج", tone: "danger", onSelect: () => void logout() },
         ]}
       />
