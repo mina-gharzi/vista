@@ -6,8 +6,8 @@ import type { SellerApplicationStatus, SellerStatus } from "@vista/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui";
 import { sellerApi } from "@/lib/api/seller";
-import { SellerApplicationStatusView } from "../SellerApplicationStatusView";
-import { SellerApplyView } from "../SellerApplyView";
+import { SellerApplicationStatusView } from "@/features/seller/SellerApplicationStatusView";
+import { SellerApplyView } from "@/features/seller/SellerApplyView";
 
 // config/env.ts در زمان Import خطا می‌دهد اگر این متغیر نباشد؛ hoisted یعنی قبل از Importها اجرا می‌شود
 vi.hoisted(() => {

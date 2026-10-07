@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui";
 import { ApiRequestError } from "@/lib/api/client";
 import { sellerApi } from "@/lib/api/seller";
-import { SellerApplicationForm } from "../SellerApplicationForm";
+import { SellerApplicationForm } from "@/features/seller/SellerApplicationForm";
 
 // config/env.ts در زمان Import خطا می‌دهد اگر این متغیر نباشد؛ hoisted یعنی قبل از Importها اجرا می‌شود
 vi.hoisted(() => {

@@ -9,3 +9,12 @@ export function formatNumber(value: number): string {
 export function formatPrice(toman: number): string {
   return `${faNumber.format(toman)} تومان`;
 }
+
+/** تاریخ شمسی کوتاه: ۱۴ مهر ۱۴۰۵ */
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("fa-IR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}

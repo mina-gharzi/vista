@@ -19,3 +19,4 @@ export * from "./types/review";
 export * from "./schemas/review.schema";
 export * from "./types/seller";
 export * from "./schemas/seller.schema";
+export * from "./types/sellerDashboard";
