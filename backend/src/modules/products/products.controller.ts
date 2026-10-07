@@ -10,15 +10,21 @@ import { sendSuccess } from "../../utils/response";
 import type { ProductsService } from "./products.service";
 
 export interface ProductsController {
+  guard: RequestHandler;
   create: RequestHandler;
   update: RequestHandler;
   updateStatus: RequestHandler;
   getOne: RequestHandler;
   list: RequestHandler;
+  archive: RequestHandler;
 }
 
 export function createProductsController(service: ProductsService): ProductsController {
   return {
+    guard: (req, _res, next) => {
+      service.assertCanManage(getAuth(req).userId).then(() => next(), next);
+    },
+
     // req.body قبلاً توسط validate(createProductSchema) پاک‌سازی و Parse شده است
     create: asyncHandler(async (req, res) => {
       const { userId } = getAuth(req);
@@ -47,6 +53,11 @@ export function createProductsController(service: ProductsService): ProductsCont
       const { userId } = getAuth(req);
       const product = await service.getMine(userId, req.params.id as string);
       sendSuccess(res, product);
+    }),
+
+    archive: asyncHandler(async (req, res) => {
+      const { userId } = getAuth(req);
+      sendSuccess(res, await service.archive(userId, req.params.id as string));
     }),
 
     list: asyncHandler(async (req, res) => {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { STORE_SLUG_PATTERN } from "./seller.schema";
 
 const uuidSchema = z.string().uuid("شناسه معتبر نیست");
 
@@ -21,10 +22,30 @@ export const productVariantInputSchema = z.object({
     .max(1_000_000),
 });
 
+/** فقط http/https: آدرس‌هایی مثل javascript: یا data: به‌عنوان تصویر محصول پذیرفته نمی‌شوند */
+const imageUrlSchema = z
+  .string()
+  .trim()
+  .max(2000, "آدرس تصویر بیش از حد طولانی است")
+  .url("آدرس تصویر معتبر نیست")
+  .refine((value) => /^https?:\/\//i.test(value), "آدرس تصویر باید با http یا https شروع شود");
+
 export const productImageInputSchema = z.object({
-  url: z.string().url("آدرس تصویر معتبر نیست"),
+  url: imageUrlSchema,
   altText: z.string().trim().max(200).optional(),
 });
+
+/** Slug محصول: همان قالب Slug فروشگاه (STORE_SLUG_PATTERN) تا منطق Slug تکرار نشود. یکتایی در Backend/DB بررسی می‌شود. */
+export const productSlugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(3, "شناسه محصول باید حداقل ۳ کاراکتر باشد")
+  .max(80, "شناسه محصول نباید بیشتر از ۸۰ کاراکتر باشد")
+  .regex(
+    STORE_SLUG_PATTERN,
+    "شناسه محصول فقط می‌تواند شامل حروف انگلیسی، عدد و خط تیره (بین کلمات) باشد",
+  );
 
 function hasDuplicateVariant(variants: { size: string; color: string }[]): boolean {
   const seen = new Set<string>();
@@ -53,6 +74,8 @@ export const createProductSchema = z
   .object({
     categoryId: uuidSchema,
     title: z.string().trim().min(3, "عنوان باید حداقل ۳ کاراکتر باشد").max(200),
+    /** اختیاری: اگر ارسال نشود، Backend از روی عنوان یک Slug یکتا می‌سازد */
+    slug: productSlugSchema.optional(),
     description: z.string().trim().min(10, "توضیحات باید حداقل ۱۰ کاراکتر باشد").max(5000),
     basePrice: priceSchema,
     compareAtPrice: priceSchema.optional(),
@@ -79,9 +102,13 @@ export const updateProductSchema = z
   .object({
     categoryId: uuidSchema.optional(),
     title: z.string().trim().min(3).max(200).optional(),
+    /** تغییر Slug فقط برای محصول منتشرنشده مجاز است (Backend بررسی می‌کند) */
+    slug: productSlugSchema.optional(),
     description: z.string().trim().min(10).max(5000).optional(),
     basePrice: priceSchema.optional(),
     compareAtPrice: priceSchema.nullable().optional(),
+    /** کل فهرست تصاویر به ترتیب نمایش (اولین = تصویر اصلی)؛ جایگزین فهرست فعلی می‌شود */
+    images: z.array(productImageInputSchema).max(8, "حداکثر ۸ تصویر مجاز است").optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "حداقل یک فیلد برای ویرایش لازم است",
@@ -101,6 +128,13 @@ export const sellerProductsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
+  /** جستجو در عنوان محصولات خود فروشنده */
+  q: z
+    .string()
+    .trim()
+    .max(100)
+    .transform((value) => (value === "" ? undefined : value))
+    .optional(),
 });
 
 export type SellerProductsQuery = z.infer<typeof sellerProductsQuerySchema>;

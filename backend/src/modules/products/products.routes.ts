@@ -6,7 +6,7 @@ import {
   updateProductSchema,
   updateProductStatusSchema,
 } from "@vista/shared";
-import { requireAuth, requireRole } from "../../middlewares/requireAuth";
+import { requireAuth } from "../../middlewares/requireAuth";
 import { validate } from "../../middlewares/validate";
 import type { ProductsController } from "./products.controller";
 
@@ -14,7 +14,9 @@ export function createProductsRouter(controller: ProductsController): Router {
   const router = Router();
 
   // همه مسیرها مخصوص فروشنده‌اند و فقط محصولات خودش را می‌بینند/می‌سازند (بخش ۱۷ پرامپت مادر)
-  router.use(requireAuth, requireRole("SELLER"));
+  // اختیار فروشنده بودن از DB (Seller.status === APPROVED) در سرویس بررسی می‌شود نه از نقش داخل توکن
+  // (توکن بعد از تأیید ادمین تا رفرش قدیمی می‌ماند)
+  router.use(requireAuth, controller.guard);
 
   router.get("/", validate(sellerProductsQuerySchema, "query"), controller.list);
   router.post("/", validate(createProductSchema, "body"), controller.create);
@@ -31,6 +33,8 @@ export function createProductsRouter(controller: ProductsController): Router {
     validate(updateProductStatusSchema, "body"),
     controller.updateStatus,
   );
+
+  router.delete("/:id", validate(productIdParamSchema, "params"), controller.archive);
 
   return router;
 }

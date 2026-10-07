@@ -14,7 +14,7 @@ import {
 } from "../../errors/AppError";
 import { slugify, withUniqueSuffix } from "../../utils/slug";
 import { toSellerProduct } from "./products.mapper";
-import type { ProductsRepository } from "./products.repository";
+import { SLUG_TAKEN_MESSAGE, type ProductsRepository } from "./products.repository";
 
 const MAX_SLUG_ATTEMPTS = 5;
 
@@ -66,7 +66,26 @@ async function generateUniqueSlug(repository: ProductsRepository, title: string)
   throw new ConflictError("ساخت شناسه یکتا برای محصول ممکن نشد؛ دوباره تلاش کنید");
 }
 
+const slugTaken = () => new ConflictError(SLUG_TAKEN_MESSAGE, { slug: [SLUG_TAKEN_MESSAGE] });
+
+/** حداقل شرایط انتشار؛ قانون سمت سرور (مخفی‌کردن دکمه در UI کافی نیست) */
+function publishBlockers(
+  product: { title: string; description: string; basePrice: number; variants: unknown[] },
+  categoryActive: boolean,
+): string[] {
+  const blockers: string[] = [];
+  if (product.title.trim().length < 3) blockers.push("عنوان محصول معتبر نیست");
+  if (product.description.trim().length < 10) blockers.push("توضیحات محصول کافی نیست");
+  if (!(product.basePrice > 0)) blockers.push("قیمت محصول معتبر نیست");
+  if (!categoryActive) blockers.push("دسته‌بندی محصول معتبر یا فعال نیست");
+  if (product.variants.length === 0) blockers.push("حداقل یک تنوع (سایز/رنگ) لازم است");
+  return blockers;
+}
+
 export interface ProductsService {
+  /** گارد پیش از اعتبارسنجی Body: فقط فروشنده APPROVED (برای غیرمجاز، حتی پیام خطای فیلدها فاش نمی‌شود) */
+  assertCanManage(userId: string): Promise<void>;
+  archive(userId: string, productId: string): Promise<SellerProduct>;
   createProduct(userId: string, input: CreateProductInput): Promise<SellerProduct>;
   updateProduct(
     userId: string,
@@ -80,6 +99,10 @@ export interface ProductsService {
 
 export function createProductsService(repository: ProductsRepository): ProductsService {
   return {
+    async assertCanManage(userId) {
+      await requireApprovedSeller(repository, userId);
+    },
+
     async createProduct(userId, input) {
       const sellerId = await requireApprovedSeller(repository, userId);
 
@@ -89,7 +112,13 @@ export function createProductsService(repository: ProductsRepository): ProductsS
         });
       }
 
-      const slug = await generateUniqueSlug(repository, input.title);
+      let slug: string;
+      if (input.slug) {
+        if (await repository.slugExists(input.slug)) throw slugTaken();
+        slug = input.slug;
+      } else {
+        slug = await generateUniqueSlug(repository, input.title);
+      }
 
       const product = await repository.createWithVariants(
         {
@@ -133,6 +162,16 @@ export function createProductsService(repository: ProductsRepository): ProductsS
         });
       }
 
+      if (input.slug !== undefined && input.slug !== current.slug) {
+        // تغییر شناسه محصول منتشرشده لینک‌های موجود را می‌شکند
+        if (current.status === "PUBLISHED") {
+          throw new ConflictError("شناسه محصول منتشرشده قابل تغییر نیست؛ ابتدا انتشار را لغو کنید", {
+            slug: ["شناسه محصول منتشرشده قابل تغییر نیست"],
+          });
+        }
+        if (await repository.slugExists(input.slug)) throw slugTaken();
+      }
+
       const updated = await repository.updateFields(productId, input);
       return toSellerProduct(updated);
     },
@@ -149,12 +188,19 @@ export function createProductsService(repository: ProductsRepository): ProductsS
         throw new ConflictError(`تغییر وضعیت از ${current.status} به ${status} مجاز نیست`);
       }
 
-      if (status === "PUBLISHED" && current.variants.length === 0) {
-        throw new ConflictError("محصول بدون هیچ تنوعی (سایز/رنگ) قابل انتشار نیست");
+      if (status === "PUBLISHED") {
+        const blockers = publishBlockers(current, await repository.categoryIsActive(current.categoryId));
+        if (blockers.length > 0) {
+          throw new ConflictError("محصول هنوز آماده انتشار نیست", { status: blockers });
+        }
       }
 
       const updated = await repository.updateStatus(productId, status);
       return toSellerProduct(updated);
+    },
+
+    async archive(userId, productId) {
+      return this.changeStatus(userId, productId, "ARCHIVED");
     },
 
     async getMine(userId, productId) {

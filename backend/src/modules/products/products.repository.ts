@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type { ProductStatus } from "@vista/shared";
+import { ConflictError } from "../../errors/AppError";
 
 export interface VariantInput {
   size: string;
@@ -28,6 +29,9 @@ export interface CreateProductData {
 export interface UpdateProductFields {
   categoryId?: string | undefined;
   title?: string | undefined;
+  slug?: string | undefined;
+  /** کل فهرست تصاویر به ترتیب؛ undefined یعنی تصاویر دست‌نخورده بماند */
+  images?: ImageInput[] | undefined;
   description?: string | undefined;
   basePrice?: number | undefined;
   compareAtPrice?: number | null | undefined;
@@ -54,10 +58,25 @@ export interface ProductsRepository {
   findOwnedById(sellerId: string, productId: string): Promise<ProductWithRelations | null>;
   findManyForSeller(
     sellerId: string,
-    params: { page: number; limit: number; status?: ProductStatus | undefined },
+    params: {
+      page: number;
+      limit: number;
+      status?: ProductStatus | undefined;
+      q?: string | undefined;
+    },
   ): Promise<{ items: ProductWithRelations[]; total: number }>;
   updateFields(productId: string, patch: UpdateProductFields): Promise<ProductWithRelations>;
   updateStatus(productId: string, status: ProductStatus): Promise<ProductWithRelations>;
+}
+
+/** نقض Unique روی slug (Race بین بررسی و نوشتن) به خطای 409 فیلد‌دار تبدیل می‌شود. */
+export const SLUG_TAKEN_MESSAGE = "این شناسه محصول قبلاً استفاده شده است";
+
+function rethrowSlugConflict(error: unknown): never {
+  if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
+    throw new ConflictError(SLUG_TAKEN_MESSAGE, { slug: [SLUG_TAKEN_MESSAGE] });
+  }
+  throw error;
 }
 
 export function createProductsRepository(prisma: PrismaClient): ProductsRepository {
@@ -80,7 +99,8 @@ export function createProductsRepository(prisma: PrismaClient): ProductsReposito
     },
 
     async createWithVariants(data, actorUserId) {
-      return prisma.$transaction(async (tx) => {
+      return prisma
+        .$transaction(async (tx) => {
         const product = await tx.product.create({
           data: {
             sellerId: data.sellerId,
@@ -124,7 +144,8 @@ export function createProductsRepository(prisma: PrismaClient): ProductsReposito
         }
 
         return product;
-      });
+      })
+        .catch(rethrowSlugConflict);
     },
 
     async findOwnedById(sellerId, productId) {
@@ -134,8 +155,12 @@ export function createProductsRepository(prisma: PrismaClient): ProductsReposito
       });
     },
 
-    async findManyForSeller(sellerId, { page, limit, status }) {
-      const where: Prisma.ProductWhereInput = { sellerId, ...(status ? { status } : {}) };
+    async findManyForSeller(sellerId, { page, limit, status, q }) {
+      const where: Prisma.ProductWhereInput = {
+        sellerId,
+        ...(status ? { status } : {}),
+        ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
+      };
       const [items, total] = await Promise.all([
         prisma.product.findMany({
           where,
@@ -155,11 +180,31 @@ export function createProductsRepository(prisma: PrismaClient): ProductsReposito
       const data: Prisma.ProductUpdateInput = {};
       if (patch.categoryId !== undefined) data.category = { connect: { id: patch.categoryId } };
       if (patch.title !== undefined) data.title = patch.title;
+      if (patch.slug !== undefined) data.slug = patch.slug;
       if (patch.description !== undefined) data.description = patch.description;
       if (patch.basePrice !== undefined) data.basePrice = patch.basePrice;
       if (patch.compareAtPrice !== undefined) data.compareAtPrice = patch.compareAtPrice;
 
-      return prisma.product.update({ where: { id: productId }, data, include: PRODUCT_INCLUDE });
+      const images = patch.images;
+      return prisma
+        .$transaction(async (tx) => {
+          if (images !== undefined) {
+            // همان مدل ProductImage؛ جایگزینی کل فهرست در یک Transaction (ترتیب = position)
+            await tx.productImage.deleteMany({ where: { productId } });
+            if (images.length > 0) {
+              await tx.productImage.createMany({
+                data: images.map((image, index) => ({
+                  productId,
+                  url: image.url,
+                  altText: image.altText ?? null,
+                  position: index,
+                })),
+              });
+            }
+          }
+          return tx.product.update({ where: { id: productId }, data, include: PRODUCT_INCLUDE });
+        })
+        .catch(rethrowSlugConflict);
     },
 
     async updateStatus(productId, status) {
