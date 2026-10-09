@@ -9,6 +9,7 @@ import { sellerProductsApi } from "@/lib/api/sellerProducts";
 import { PRODUCT_STATUS_LABEL, PRODUCT_STATUS_VARIANT } from "./productStatus";
 import { ProductForm } from "./ProductForm";
 import { ProductStatusActions } from "./ProductStatusActions";
+import { VariantBuilder } from "@/features/sellerVariants/VariantBuilder";
 import { useCategoryOptions } from "./useCategoryOptions";
 
 type State =
@@ -113,6 +114,8 @@ export function SellerProductEditView({ productId }: { productId: string }) {
           onSubmit={save}
         />
       )}
+
+      <VariantBuilder product={product} />
     </div>
   );
 }

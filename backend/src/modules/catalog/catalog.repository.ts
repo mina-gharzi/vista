@@ -119,7 +119,10 @@ export function createCatalogRepository(prisma: PrismaClient): CatalogRepository
           basePrice: true,
           compareAtPrice: true,
           images: { orderBy: { position: "asc" }, select: { url: true, altText: true } },
-          variants: { select: { id: true, size: true, color: true, price: true, stock: true } },
+          variants: {
+            where: { isActive: true },
+            select: { id: true, size: true, color: true, price: true, stock: true },
+          },
           category: { select: { id: true, name: true, slug: true } },
           seller: { select: { storeName: true } },
         },

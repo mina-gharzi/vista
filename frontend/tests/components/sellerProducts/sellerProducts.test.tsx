@@ -33,6 +33,9 @@ vi.mock("@/lib/api/sellerProducts", () => ({
     archive: vi.fn(),
   },
 }));
+vi.mock("@/lib/api/sellerVariants", () => ({
+  sellerVariantsApi: { list: vi.fn().mockResolvedValue([]), sync: vi.fn() },
+}));
 vi.mock("@/lib/api/categories", () => ({ categoriesApi: { getTree: vi.fn() } }));
 
 const api = vi.mocked(sellerProductsApi);
@@ -53,7 +56,7 @@ function makeProduct(overrides: Partial<SellerProduct> = {}): SellerProduct {
     status: "DRAFT",
     createdAt: "2026-10-01T10:00:00.000Z",
     updatedAt: "2026-10-01T10:00:00.000Z",
-    variants: [{ id: "v1", sku: "S1", size: "M", color: "مشکی", price: null, stock: 3 }],
+    variants: [{ id: "v1", sku: "S1", size: "M", color: "مشکی", price: null, stock: 3, isActive: true }],
     images: [],
     ...overrides,
   };

@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Badge, Card } from "@/components/ui";
-import { AddToCartForm } from "@/features/cart/components/AddToCartForm";
-import { WishlistButton } from "@/features/wishlist/WishlistButton";
+import { ProductPurchasePanel } from "@/features/catalog/ProductPurchasePanel";
 import { ReviewsSection } from "@/features/reviews/ReviewsSection";
 import { catalogApi } from "@/lib/api/catalog";
 import { ApiRequestError } from "@/lib/api/client";
-import { formatPrice } from "@/lib/utils/format";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +29,6 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const product = await loadProduct(params.slug);
   if (!product) notFound();
-
-  const hasDiscount = product.compareAtPrice !== null && product.compareAtPrice > product.basePrice;
-  const availableSizes = [...new Set(product.variants.map((v) => v.size))];
-  const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
@@ -97,61 +90,13 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <h1 className="type-h1">{product.title}</h1>
           </div>
 
-          <div className="flex items-baseline gap-3">
-            <span className="type-price text-2xl">{formatPrice(product.basePrice)}</span>
-            {hasDiscount && (
-              <>
-                <span className="text-ink-faint line-through">
-                  {formatPrice(product.compareAtPrice as number)}
-                </span>
-                <Badge variant="premium">
-                  ٪{Math.round((1 - product.basePrice / (product.compareAtPrice as number)) * 100)}{" "}
-                  تخفیف
-                </Badge>
-              </>
-            )}
-          </div>
-
-          <p className="whitespace-pre-line text-ink-muted">{product.description}</p>
-
-          <Card padding="md" className="flex flex-col gap-3">
-            <h2 className="type-label">تنوع موجود</h2>
-            {totalStock === 0 ? (
-              <Badge variant="danger">ناموجود</Badge>
-            ) : (
-              <>
-                <div className="flex flex-wrap gap-2">
-                  {availableSizes.map((size) => (
-                    <span
-                      key={size}
-                      className="rounded border border-border px-3 py-1 text-sm text-ink"
-                    >
-                      {size}
-                    </span>
-                  ))}
-                </div>
-                <ul className="flex flex-col gap-1 text-sm text-ink-muted">
-                  {product.variants.map((variant) => (
-                    <li key={variant.id} className="flex items-center justify-between">
-                      <span>
-                        {variant.size} / {variant.color}
-                      </span>
-                      <span className={variant.stock === 0 ? "text-danger" : ""}>
-                        {variant.stock === 0 ? "ناموجود" : `${variant.stock} عدد موجود`}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </Card>
-
-          <div className="flex items-start gap-3">
-            <div className="flex-1">
-              <AddToCartForm variants={product.variants} />
-            </div>
-            <WishlistButton productId={product.id} />
-          </div>
+          <ProductPurchasePanel
+            productId={product.id}
+            description={product.description}
+            basePrice={product.basePrice}
+            compareAtPrice={product.compareAtPrice}
+            variants={product.variants}
+          />
         </div>
       </div>
 

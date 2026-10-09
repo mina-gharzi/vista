@@ -8,6 +8,16 @@ export interface ProductVariantSummary {
   /** null یعنی basePrice محصول ملاک است */
   price: number | null;
   stock: number;
+  /** false = آرشیو شده؛ فقط فروشنده می‌بیند و در فروشگاه عمومی نمایش داده نمی‌شود */
+  isActive: boolean;
+}
+
+/**
+ * قیمت مؤثر یک تنوع: اگر قیمت اختصاصی دارد همان، وگرنه basePrice محصول.
+ * تنها تعریف «قیمت مؤثر» در کل پروژه — Frontend و Backend هر دو از همین استفاده می‌کنند.
+ */
+export function getEffectivePrice(variant: { price: number | null }, basePrice: number): number {
+  return variant.price ?? basePrice;
 }
 
 export interface ProductImageSummary {

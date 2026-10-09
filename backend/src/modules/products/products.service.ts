@@ -189,7 +189,10 @@ export function createProductsService(repository: ProductsRepository): ProductsS
       }
 
       if (status === "PUBLISHED") {
-        const blockers = publishBlockers(current, await repository.categoryIsActive(current.categoryId));
+        const blockers = publishBlockers(
+          { ...current, variants: current.variants.filter((variant) => variant.isActive !== false) },
+          await repository.categoryIsActive(current.categoryId),
+        );
         if (blockers.length > 0) {
           throw new ConflictError("محصول هنوز آماده انتشار نیست", { status: blockers });
         }

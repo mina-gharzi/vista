@@ -247,8 +247,8 @@ export function ProductForm(props: ProductFormProps) {
         <ProductImagesEditor images={images} onChange={setImages} error={fieldErrors.images} />
       </Section>
 
-      <Section title="تنوع‌ها (سایز و رنگ)">
-        {props.mode === "create" ? (
+      {props.mode === "create" && (
+        <Section title="تنوع‌ها (سایز و رنگ)">
           <>
             {fieldErrors.variants && (
               <p role="alert" className="text-sm text-danger">
@@ -302,21 +302,8 @@ export function ProductForm(props: ProductFormProps) {
               </Button>
             </div>
           </>
-        ) : (
-          <>
-            <ul className="flex flex-wrap gap-2" aria-label="تنوع‌های فعلی">
-              {props.product.variants.map((variant) => (
-                <li key={variant.id} className="rounded border border-border bg-ivory px-3 py-1.5 text-sm">
-                  {variant.size} / {variant.color}
-                </li>
-              ))}
-            </ul>
-            <p className="type-caption">
-              ویرایش تنوع‌ها و موجودی در بخش «مدیریت تنوع و موجودی» (مرحله بعد) انجام می‌شود.
-            </p>
-          </>
-        )}
-      </Section>
+        </Section>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" loading={submitting} size="lg">

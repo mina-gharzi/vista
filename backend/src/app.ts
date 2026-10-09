@@ -8,6 +8,7 @@ import { createRateLimiter } from "./middlewares/rateLimit";
 import { authRouter } from "./modules/auth";
 import { categoriesRouter } from "./modules/categories";
 import { productsRouter } from "./modules/products";
+import { variantsRouter } from "./modules/variants";
 import { catalogRouter } from "./modules/catalog";
 import { cartRouter } from "./modules/cart";
 import { addressesRouter } from "./modules/addresses";
@@ -44,6 +45,8 @@ export function createApp(): Express {
   // هر Module کامل‌شده (طبق بخش ۳ و ۱۳ پرامپت مادر) Router خود را اینجا اضافه می‌کند.
   app.use("/api/auth", authRouter);
   app.use("/api/categories", categoriesRouter);
+  // مسیر عمیق‌تر باید قبل از /api/seller/products ثبت شود
+  app.use("/api/seller/products/:productId/variants", variantsRouter);
   app.use("/api/seller/products", productsRouter);
   app.use("/api/seller/dashboard", sellerDashboardRouter);
   app.use("/api/seller", sellersRouter);

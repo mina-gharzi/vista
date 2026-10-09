@@ -106,6 +106,7 @@ export function createOrdersRepository(prisma: PrismaClient): OrdersRepository {
                     sku: true,
                     price: true,
                     stock: true,
+                    isActive: true,
                     product: {
                       select: {
                         id: true,
@@ -153,7 +154,7 @@ export function createOrdersRepository(prisma: PrismaClient): OrdersRepository {
           availableStock: number;
         }[] = [];
         for (const item of cartItems) {
-          if (item.variant.product.status !== "PUBLISHED") {
+          if (item.variant.product.status !== "PUBLISHED" || !item.variant.isActive) {
             problems.push({
               variantId: item.variantId,
               productTitle: item.variant.product.title,

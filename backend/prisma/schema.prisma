@@ -187,6 +187,8 @@ model ProductVariant {
   stock     Int      @default(0)
   // برای جلوگیری از Race Condition در کسر موجودی همزمان (Optimistic Locking)
   version   Int      @default(0)
+  // false = تنوع آرشیو شده: برای مشتری نمایش/فروش داده نمی‌شود ولی ردیف (و تاریخچه سفارش/انبار) حذف نمی‌شود
+  isActive  Boolean  @default(true)
 
   cartItems          CartItem[]
   orderItems         OrderItem[]

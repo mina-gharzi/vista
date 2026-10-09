@@ -22,6 +22,8 @@ export interface CartItemRow {
 export interface VariantForCart {
   id: string;
   stock: number;
+  /** تنوع آرشیوشده قابل خرید نیست */
+  isActive?: boolean;
   product: { status: string };
 }
 
@@ -63,7 +65,7 @@ export function createCartRepository(prisma: PrismaClient): CartRepository {
     async findVariantForCart(variantId) {
       return prisma.productVariant.findUnique({
         where: { id: variantId },
-        select: { id: true, stock: true, product: { select: { status: true } } },
+        select: { id: true, stock: true, isActive: true, product: { select: { status: true } } },
       });
     },
 

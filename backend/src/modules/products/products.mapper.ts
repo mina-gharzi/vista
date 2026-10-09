@@ -20,6 +20,7 @@ export function toSellerProduct(product: ProductWithRelations): SellerProduct {
       color: variant.color,
       price: variant.price,
       stock: variant.stock,
+      isActive: variant.isActive,
     })),
     images: product.images.map((image) => ({
       id: image.id,
