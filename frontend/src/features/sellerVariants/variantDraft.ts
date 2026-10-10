@@ -129,7 +129,7 @@ export function validateDrafts(drafts: VariantDraft[]): DraftErrors {
 }
 
 export function toSyncPayload(drafts: VariantDraft[]): SyncVariantsInput {
-  return {
+  const payload: SyncVariantsInput = {
     variants: drafts.map((draft) => {
       const price = parseNumberInput(draft.price);
       return {
@@ -142,5 +142,6 @@ export function toSyncPayload(drafts: VariantDraft[]): SyncVariantsInput {
         stock: draft.id === null ? (parseNumberInput(draft.stock) ?? 0) : 0,
       };
     }),
-  } as SyncVariantsInput;
+  };
+  return payload;
 }

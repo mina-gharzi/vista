@@ -14,7 +14,7 @@ export const SELLER_NAV: readonly SellerNavItem[] = [
   { key: "dashboard", label: "داشبورد", href: "/seller/dashboard", available: true },
   { key: "products", label: "محصولات", href: "/seller/products", available: true },
   { key: "orders", label: "سفارش‌ها", href: "/seller/orders", available: false },
-  { key: "inventory", label: "موجودی", href: "/seller/inventory", available: false },
+  { key: "inventory", label: "موجودی", href: "/seller/inventory", available: true },
   { key: "settings", label: "تنظیمات", href: "/seller/settings", available: false },
 ];
 

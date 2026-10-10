@@ -21,3 +21,5 @@ export * from "./schemas/review.schema";
 export * from "./types/seller";
 export * from "./schemas/seller.schema";
 export * from "./types/sellerDashboard";
+export * from "./types/inventory";
+export * from "./schemas/inventory.schema";

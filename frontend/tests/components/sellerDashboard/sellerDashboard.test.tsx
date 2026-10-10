@@ -152,10 +152,10 @@ describe("SellerDashboardView", () => {
     expect(within(alerts).getByText("۲ عدد باقی مانده")).toBeInTheDocument();
     expect(within(alerts).getByText("شلوار کتان")).toBeInTheDocument();
     expect(within(alerts).getByText("ناموجود")).toBeInTheDocument();
-    // بخش موجودی هنوز ساخته نشده: دکمه غیرفعال است، لینک به صفحه ناموجود نیست
-    expect(within(alerts).queryByRole("link", { name: /مشاهده موجودی/, hidden: false })).toHaveAttribute(
-      "aria-disabled",
-      "true",
+    // بخش موجودی ساخته شده است: لینک واقعی به صفحه مدیریت موجودی
+    expect(within(alerts).getByRole("link", { name: /مشاهده موجودی/ })).toHaveAttribute(
+      "href",
+      "/seller/inventory",
     );
   });
 
@@ -176,9 +176,11 @@ describe("SellerDashboardView", () => {
     render(<SellerDashboardView />);
 
     const quick = (await screen.findByRole("heading", { name: "اقدام سریع" })).closest("section")!;
-    for (const name of [/مشاهده سفارش‌ها/, /مدیریت موجودی/]) {
-      expect(within(quick).getByRole("link", { name })).toHaveAttribute("aria-disabled", "true");
-    }
+    expect(within(quick).getByRole("link", { name: /مشاهده سفارش‌ها/ })).toHaveAttribute("aria-disabled", "true");
+    expect(within(quick).getByRole("link", { name: /مدیریت موجودی/ })).toHaveAttribute(
+      "href",
+      "/seller/inventory",
+    );
     expect(within(quick).getByRole("link", { name: /افزودن محصول/ })).toHaveAttribute(
       "href",
       "/seller/products/new",
@@ -247,12 +249,16 @@ describe("SellerShell — ناوبری", () => {
       "href",
       "/seller/products",
     );
-    for (const label of ["سفارش‌ها", "موجودی", "تنظیمات"]) {
+    expect(within(desktopNav).getByRole("link", { name: "موجودی" })).toHaveAttribute(
+      "href",
+      "/seller/inventory",
+    );
+    for (const label of ["سفارش‌ها", "تنظیمات"]) {
       const item = within(desktopNav).getByText(label).closest("[aria-disabled]");
       expect(item).toHaveAttribute("aria-disabled", "true");
       expect(item?.tagName).not.toBe("A");
     }
-    expect(within(desktopNav).getAllByText("به‌زودی")).toHaveLength(3);
+    expect(within(desktopNav).getAllByText("به‌زودی")).toHaveLength(2);
   });
 
   it("انتخاب لینک فعال در منوی موبایل، منو را می‌بندد", async () => {

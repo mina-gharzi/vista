@@ -16,6 +16,7 @@ import { checkoutRouter, ordersRouter } from "./modules/orders";
 import { wishlistRouter } from "./modules/wishlist";
 import { sellersRouter } from "./modules/sellers";
 import { sellerDashboardRouter } from "./modules/sellerDashboard";
+import { inventoryRouter } from "./modules/inventory";
 import { productReviewsRouter, reviewsRouter } from "./modules/reviews";
 import { NotFoundError } from "./errors/AppError";
 
@@ -49,6 +50,7 @@ export function createApp(): Express {
   app.use("/api/seller/products/:productId/variants", variantsRouter);
   app.use("/api/seller/products", productsRouter);
   app.use("/api/seller/dashboard", sellerDashboardRouter);
+  app.use("/api/seller/inventory", inventoryRouter);
   app.use("/api/seller", sellersRouter);
   app.use("/api/products", catalogRouter);
   app.use("/api/cart", cartRouter);

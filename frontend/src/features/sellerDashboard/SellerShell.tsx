@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui";
 import { cn } from "@/lib/utils/cn";
 import { SELLER_NAV, type SellerNavItem } from "./sellerNav";
@@ -67,12 +67,18 @@ export function SellerShell({ children }: { children: ReactNode }) {
   // با تغییر مسیر منوی موبایل بسته می‌شود
   useEffect(() => setMenuOpen(false), [pathname]);
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === "Escape" && menuOpen) {
-      setMenuOpen(false);
-      buttonRef.current?.focus();
-    }
-  };
+  // بستن با Esc: Listener روی document (نه روی عنصر غیرتعاملی) و فقط وقتی منو باز است
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [menuOpen]);
 
   return (
     <div className="min-h-screen bg-ivory lg:flex">
@@ -92,10 +98,7 @@ export function SellerShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="min-w-0 flex-1">
-        <header
-          onKeyDown={handleKeyDown}
-          className="border-b border-border bg-ivory-soft px-4 py-3 lg:hidden"
-        >
+        <header className="border-b border-border bg-ivory-soft px-4 py-3 lg:hidden">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-xl font-semibold tracking-tight text-bordeaux">
               ویستا

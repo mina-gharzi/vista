@@ -139,7 +139,7 @@ describe("صفحه محصول مشتری — انتخاب تنوع", () => {
 
   it("8) افزودن به سبد، variantId تنوع انتخاب‌شده را با تعداد ارسال می‌کند", async () => {
     const user = userEvent.setup();
-    addItem.mockResolvedValue({} as never);
+    addItem.mockResolvedValue({ items: [], itemCount: 0, subtotal: 0 });
     renderPanel();
     await user.click(screen.getByRole("button", { name: "رنگ Black" }));
     await user.click(screen.getByRole("button", { name: "سایز M" }));
