@@ -171,12 +171,12 @@ describe("SellerDashboardView", () => {
     expect(await screen.findAllByText("موردی وجود ندارد.")).toHaveLength(2);
   });
 
-  it("«افزودن محصول» به صفحه ساخت محصول لینک است؛ بخش‌های ساخته‌نشده غیرفعال‌اند", async () => {
+  it("اقدام سریع: افزودن محصول، سفارش‌ها و موجودی به صفحه‌های واقعی لینک‌اند", async () => {
     get.mockResolvedValue(makeDashboard());
     render(<SellerDashboardView />);
 
     const quick = (await screen.findByRole("heading", { name: "اقدام سریع" })).closest("section")!;
-    expect(within(quick).getByRole("link", { name: /مشاهده سفارش‌ها/ })).toHaveAttribute("aria-disabled", "true");
+    expect(within(quick).getByRole("link", { name: /مشاهده سفارش‌ها/ })).toHaveAttribute("href", "/seller/orders");
     expect(within(quick).getByRole("link", { name: /مدیریت موجودی/ })).toHaveAttribute(
       "href",
       "/seller/inventory",
@@ -253,12 +253,16 @@ describe("SellerShell — ناوبری", () => {
       "href",
       "/seller/inventory",
     );
-    for (const label of ["سفارش‌ها", "تنظیمات"]) {
+    expect(within(desktopNav).getByRole("link", { name: "سفارش‌ها" })).toHaveAttribute(
+      "href",
+      "/seller/orders",
+    );
+    for (const label of ["تنظیمات"]) {
       const item = within(desktopNav).getByText(label).closest("[aria-disabled]");
       expect(item).toHaveAttribute("aria-disabled", "true");
       expect(item?.tagName).not.toBe("A");
     }
-    expect(within(desktopNav).getAllByText("به‌زودی")).toHaveLength(2);
+    expect(within(desktopNav).getAllByText("به‌زودی")).toHaveLength(1);
   });
 
   it("انتخاب لینک فعال در منوی موبایل، منو را می‌بندد", async () => {

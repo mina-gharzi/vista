@@ -42,6 +42,7 @@ model User {
   addresses          Address[]
   refreshTokens      RefreshToken[]
   inventoryMovements InventoryMovement[]
+  sellerOrderEvents  SellerOrderEvent[]
 
   @@map("users")
 }
@@ -358,12 +359,31 @@ model SellerOrder {
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 
-  items OrderItem[]
+  items  OrderItem[]
+  events SellerOrderEvent[]
 
   // در هر سفارش، برای هر فروشنده فقط یک SellerOrder
   @@unique([orderId, sellerId])
   @@index([sellerId, status, createdAt])
   @@map("seller_orders")
+}
+
+// تاریخچه تغییر وضعیت ارسال هر SellerOrder (Audit Trail) — رکوردها هرگز ویرایش یا حذف نمی‌شوند
+model SellerOrderEvent {
+  id            String            @id @default(uuid())
+  sellerOrderId String
+  sellerOrder   SellerOrder       @relation(fields: [sellerOrderId], references: [id], onDelete: Cascade)
+  fromStatus    FulfillmentStatus
+  toStatus      FulfillmentStatus
+  // فقط هنگام ارسال (SHIPPED) مقدار دارد
+  trackingCode  String?
+  // کاربری که تغییر را انجام داده (از توکن، نه از Client)
+  actorId       String?
+  actor         User?             @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt     DateTime          @default(now())
+
+  @@index([sellerOrderId, createdAt])
+  @@map("seller_order_events")
 }
 
 model OrderItem {

@@ -1,4 +1,4 @@
-import type { FulfillmentStatus, OrderStatus } from "@vista/shared";
+import { FULFILLMENT_STATUS_LABEL, type FulfillmentStatus, type OrderStatus } from "@vista/shared";
 import type { BadgeVariant } from "@/components/ui";
 
 export const orderStatusLabel: Record<OrderStatus, string> = {
@@ -15,13 +15,8 @@ export const orderStatusBadge: Record<OrderStatus, BadgeVariant> = {
   REFUNDED: "neutral",
 };
 
-export const fulfillmentStatusLabel: Record<FulfillmentStatus, string> = {
-  PENDING: "در انتظار آماده‌سازی",
-  PROCESSING: "در حال آماده‌سازی",
-  SHIPPED: "ارسال‌شده",
-  DELIVERED: "تحویل‌شده",
-  CANCELLED: "لغوشده",
-};
+/** منبع واحد در @vista/shared: پیام‌های Backend و تمام صفحه‌ها یک متن را نشان می‌دهند */
+export const fulfillmentStatusLabel: Record<FulfillmentStatus, string> = FULFILLMENT_STATUS_LABEL;
 
 export const fulfillmentStatusBadge: Record<FulfillmentStatus, BadgeVariant> = {
   PENDING: "neutral",

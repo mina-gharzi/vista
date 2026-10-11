@@ -18,3 +18,14 @@ export function formatDate(iso: string): string {
     day: "numeric",
   });
 }
+
+/** تاریخ و ساعت شمسی: ۱۴ مهر ۱۴۰۵، ۱۲:۳۰ */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("fa-IR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

@@ -30,12 +30,4 @@ export function formatDelta(delta: number): string {
   return formatNumber(0);
 }
 
-export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("fa-IR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+export { formatDateTime } from "@/lib/utils/format";
