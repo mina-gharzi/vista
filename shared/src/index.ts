@@ -13,6 +13,7 @@ export * from "./schemas/cart.schema";
 export * from "./types/address";
 export * from "./schemas/address.schema";
 export * from "./types/order";
+export * from "./types/orderLifecycle";
 export * from "./schemas/checkout.schema";
 export * from "./types/wishlist";
 export * from "./schemas/wishlist.schema";

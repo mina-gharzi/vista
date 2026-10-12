@@ -335,11 +335,19 @@ model Order {
 
   paymentRef String?
   paidAt     DateTime?
+  cancelledAt DateTime?
+
+  // کلید یکتای هر «تلاش ثبت سفارش» که Client می‌سازد (UUID). تکرار همان کلید برای همان کاربر
+  // هرگز سفارش دوم نمی‌سازد. سفارش‌های قدیمی null دارند (در Postgres چند null در ایندکس یکتا مجاز است).
+  checkoutKey String?
+
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
   sellerOrders SellerOrder[]
 
+  @@unique([userId, checkoutKey])
+  @@index([userId, status, createdAt])
   @@index([userId, createdAt])
   @@map("orders")
 }

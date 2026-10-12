@@ -16,5 +16,6 @@ export function createOrdersHistoryRouter(controller: OrdersController): Router 
   router.use(requireAuth);
   router.get("/", validate(ordersQuerySchema, "query"), controller.list);
   router.get("/:id", validate(orderIdParamSchema, "params"), controller.getOne);
+  router.post("/:id/cancel", validate(orderIdParamSchema, "params"), controller.cancel);
   return router;
 }

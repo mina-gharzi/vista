@@ -13,6 +13,11 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32, "JWT_REFRESH_SECRET باید حداقل ۳۲ کاراکتر باشد"),
   JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN_DAYS: z.coerce.number().int().positive().default(7),
+  // فقط توسعه/دمو: تأیید خودکار پرداخت با Mock. در production نادیده گرفته می‌شود (همیشه خاموش).
+  MOCK_PAYMENT_AUTO_CONFIRM: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value === "true"),
   CORS_ORIGIN: z.string().min(1, "CORS_ORIGIN الزامی است"),
 });
 

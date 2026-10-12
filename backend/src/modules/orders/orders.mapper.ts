@@ -1,11 +1,21 @@
-import type { OrderDetail, OrderListItem } from "@vista/shared";
-import type { OrderWithRelations } from "./orders.repository";
+import {
+  deriveOrderFulfillment,
+  isOrderCancellableByCustomer,
+  type FulfillmentStatus,
+  type OrderDetail,
+  type OrderListItem,
+  type OrderStatus,
+} from "@vista/shared";
+import type { OrderListRow, OrderWithRelations } from "./orders.repository";
+
+const iso = (date: Date | null): string | null => (date ? date.toISOString() : null);
 
 export function toOrderDetail(order: OrderWithRelations): OrderDetail {
+  const sellerStatuses = order.sellerOrders.map((so) => so.status as FulfillmentStatus);
   return {
     id: order.id,
     orderNumber: order.orderNumber,
-    status: order.status as OrderDetail["status"],
+    status: order.status as OrderStatus,
     subtotal: order.subtotal,
     shippingCost: order.shippingCost,
     discountAmount: order.discountAmount,
@@ -21,8 +31,11 @@ export function toOrderDetail(order: OrderWithRelations): OrderDetail {
     sellerOrders: order.sellerOrders.map((so) => ({
       id: so.id,
       sellerStoreName: so.seller.storeName,
-      status: so.status as OrderDetail["sellerOrders"][number]["status"],
+      status: so.status as FulfillmentStatus,
       subtotal: so.subtotal,
+      trackingCode: so.trackingCode,
+      shippedAt: iso(so.shippedAt),
+      deliveredAt: iso(so.deliveredAt),
       items: so.items.map((item) => ({
         id: item.id,
         productSlug: item.variant.product.slug,
@@ -35,20 +48,26 @@ export function toOrderDetail(order: OrderWithRelations): OrderDetail {
         lineTotal: item.unitPrice * item.quantity,
       })),
     })),
+    fulfillment: deriveOrderFulfillment(sellerStatuses),
+    canCancel: isOrderCancellableByCustomer(order.status as OrderStatus, sellerStatuses),
     createdAt: order.createdAt.toISOString(),
-    paidAt: order.paidAt ? order.paidAt.toISOString() : null,
+    paidAt: iso(order.paidAt),
+    cancelledAt: iso(order.cancelledAt),
   };
 }
 
-export function toOrderListItem(order: OrderWithRelations): OrderListItem {
+export function toOrderListItem(order: OrderListRow): OrderListItem {
+  const sellerStatuses = order.sellerOrders.map((so) => so.status as FulfillmentStatus);
   const allItems = order.sellerOrders.flatMap((so) => so.items);
   return {
     id: order.id,
     orderNumber: order.orderNumber,
-    status: order.status as OrderListItem["status"],
+    status: order.status as OrderStatus,
     totalAmount: order.totalAmount,
     itemCount: allItems.reduce((sum, item) => sum + item.quantity, 0),
-    previewImageUrl: allItems[0]?.imageUrl ?? null,
+    previewImageUrl: allItems.find((item) => item.imageUrl)?.imageUrl ?? null,
+    fulfillment: deriveOrderFulfillment(sellerStatuses),
+    canCancel: isOrderCancellableByCustomer(order.status as OrderStatus, sellerStatuses),
     createdAt: order.createdAt.toISOString(),
   };
 }

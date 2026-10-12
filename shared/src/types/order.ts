@@ -18,7 +18,31 @@ export interface SellerOrderSummary {
   sellerStoreName: string;
   status: FulfillmentStatus;
   subtotal: number;
+  /** کد رهگیری فقط بعد از ارسال توسط فروشنده پر می‌شود */
+  trackingCode: string | null;
+  shippedAt: string | null;
+  deliveredAt: string | null;
   items: OrderItemSummary[];
+}
+
+/**
+ * خلاصهٔ پیشرفت ارسال «والد» که فقط از وضعیت SellerOrderها محاسبه می‌شود (ذخیره نمی‌شود،
+ * پس هرگز با وضعیت فروشنده‌ها ناهماهنگ نمی‌شود). نگاه کنید به orderLifecycle.ts.
+ */
+export type OrderFulfillmentState =
+  | "PENDING"
+  | "PROCESSING"
+  | "PARTIALLY_SHIPPED"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "CANCELLED";
+
+export interface OrderFulfillmentSummary {
+  state: OrderFulfillmentState;
+  /** تعداد بسته‌های فعال (غیرلغوشده) */
+  totalParcels: number;
+  shippedParcels: number;
+  deliveredParcels: number;
 }
 
 /** نمای فشرده برای فهرست سفارش‌ها */
@@ -29,6 +53,9 @@ export interface OrderListItem {
   totalAmount: number;
   itemCount: number;
   previewImageUrl: string | null;
+  fulfillment: OrderFulfillmentSummary;
+  /** تصمیم نهایی با Server است؛ این فقط برای نمایش/عدم‌نمایش دکمه است */
+  canCancel: boolean;
   createdAt: string;
 }
 
@@ -51,6 +78,9 @@ export interface OrderDetail {
   totalAmount: number;
   shippingAddress: ShippingAddressSnapshot;
   sellerOrders: SellerOrderSummary[];
+  fulfillment: OrderFulfillmentSummary;
+  canCancel: boolean;
   createdAt: string;
   paidAt: string | null;
+  cancelledAt: string | null;
 }
