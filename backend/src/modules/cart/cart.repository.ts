@@ -15,6 +15,8 @@ export interface CartItemRow {
       basePrice: number;
       status: string;
       images: { url: string }[];
+      /** فروشنده‌ای که تأییدشده نیست (مثلاً تعلیق‌شده) کالایش قابل خرید نیست */
+      seller: { status: string };
     };
   };
 }
@@ -24,7 +26,7 @@ export interface VariantForCart {
   stock: number;
   /** تنوع آرشیوشده قابل خرید نیست */
   isActive?: boolean;
-  product: { status: string };
+  product: { status: string; seller: { status: string } };
 }
 
 const CART_ITEMS_SELECT = {
@@ -44,6 +46,7 @@ const CART_ITEMS_SELECT = {
           basePrice: true,
           status: true,
           images: { take: 1, orderBy: { position: "asc" as const }, select: { url: true } },
+          seller: { select: { status: true } },
         },
       },
     },
@@ -65,7 +68,12 @@ export function createCartRepository(prisma: PrismaClient): CartRepository {
     async findVariantForCart(variantId) {
       return prisma.productVariant.findUnique({
         where: { id: variantId },
-        select: { id: true, stock: true, isActive: true, product: { select: { status: true } } },
+        select: {
+          id: true,
+          stock: true,
+          isActive: true,
+          product: { select: { status: true, seller: { select: { status: true } } } },
+        },
       });
     },
 

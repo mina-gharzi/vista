@@ -26,3 +26,5 @@ export * from "./types/inventory";
 export * from "./schemas/inventory.schema";
 export * from "./types/sellerOrder";
 export * from "./schemas/sellerOrder.schema";
+export * from "./types/admin";
+export * from "./schemas/admin.schema";

@@ -105,7 +105,7 @@ export function createSellersRepository(prisma: PrismaClient): SellersRepository
       try {
         const { count } = await prisma.seller.updateMany({
           where: { userId, status: "REJECTED" },
-          data: { ...data, status: "PENDING" },
+          data: { ...data, status: "PENDING", statusReason: null, statusChangedAt: new Date() },
         });
         if (count === 0) return null;
         return await prisma.seller.findUnique({ where: { userId }, select: SELLER_SELECT });

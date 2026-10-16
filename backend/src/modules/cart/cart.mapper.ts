@@ -15,7 +15,10 @@ function toCartItem(row: CartItemRow): CartItemSummary {
     unitPrice,
     lineTotal: unitPrice * row.quantity,
     availableStock: row.variant.stock,
-    isAvailable: row.variant.product.status === "PUBLISHED" && row.variant.stock >= row.quantity,
+    isAvailable:
+      row.variant.product.status === "PUBLISHED" &&
+      row.variant.product.seller.status === "APPROVED" &&
+      row.variant.stock >= row.quantity,
   };
 }
 

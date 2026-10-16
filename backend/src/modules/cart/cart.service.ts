@@ -5,7 +5,12 @@ import { toCartSummary } from "./cart.mapper";
 
 async function requirePurchasableVariant(repository: CartRepository, variantId: string) {
   const variant = await repository.findVariantForCart(variantId);
-  if (!variant || variant.isActive === false || variant.product.status !== "PUBLISHED") {
+  if (
+    !variant ||
+    variant.isActive === false ||
+    variant.product.status !== "PUBLISHED" ||
+    variant.product.seller.status !== "APPROVED"
+  ) {
     throw new NotFoundError("این کالا در دسترس نیست");
   }
   return variant;

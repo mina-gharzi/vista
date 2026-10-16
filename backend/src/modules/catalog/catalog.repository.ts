@@ -80,6 +80,8 @@ export function createCatalogRepository(prisma: PrismaClient): CatalogRepository
     async findMany(query, categoryIds) {
       const where: Prisma.ProductWhereInput = {
         status: "PUBLISHED",
+        // محصول فروشندهٔ تعلیق‌شده/تأییدنشده برای مشتری نمایش داده نمی‌شود
+        seller: { status: "APPROVED" },
         ...(categoryIds ? { categoryId: { in: categoryIds } } : {}),
         ...(query.search ? { title: { contains: query.search, mode: "insensitive" } } : {}),
         ...(query.minPrice !== undefined ? { basePrice: { gte: query.minPrice } } : {}),
@@ -110,7 +112,7 @@ export function createCatalogRepository(prisma: PrismaClient): CatalogRepository
 
     async findPublishedBySlug(slug) {
       return prisma.product.findFirst({
-        where: { slug, status: "PUBLISHED" },
+        where: { slug, status: "PUBLISHED", seller: { status: "APPROVED" } },
         select: {
           id: true,
           slug: true,

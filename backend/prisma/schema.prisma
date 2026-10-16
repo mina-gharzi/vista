@@ -43,6 +43,7 @@ model User {
   refreshTokens      RefreshToken[]
   inventoryMovements InventoryMovement[]
   sellerOrderEvents  SellerOrderEvent[]
+  adminAuditLogs     AdminAuditLog[]    @relation("AdminAuditActor")
 
   @@map("users")
 }
@@ -77,6 +78,9 @@ model Seller {
   storeSlug   String       @unique
   description String?
   status      SellerStatus @default(PENDING)
+  // دلیل آخرین رد/تعلیق توسط ادمین؛ با تأیید یا ارسال مجدد null می‌شود
+  statusReason    String?
+  statusChangedAt DateTime?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -435,4 +439,25 @@ model Review {
   @@unique([userId, productId])
   @@index([productId])
   @@map("reviews")
+}
+
+/// دفتر ممیزی اقدام‌های ادمین. فقط‌افزودنی است: Trigger دیتابیس هر UPDATE/DELETE را رد می‌کند.
+/// action/targetType عمداً String هستند (افزودن نوع جدید Migration نمی‌خواهد)؛ مقادیر مجاز در @vista/shared است.
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  actor      User     @relation("AdminAuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+  action     String
+  targetType String
+  targetId   String
+  fromStatus String?
+  toStatus   String?
+  reason     String?
+  // جزئیات غیرحساس (مثلاً فیلدهای تغییریافتهٔ دسته)؛ هرگز رمز/توکن/اطلاعات شخصی
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("admin_audit_logs")
 }
