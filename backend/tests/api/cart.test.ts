@@ -59,6 +59,19 @@ describe("POST /api/cart", () => {
     expect(res.status).toBe(404);
   });
 
+  it("کالای فروشندهٔ تعلیق‌شده/غیرتأییدشده را نمی‌پذیرد (404)", async () => {
+    const { app, repo } = buildCartApp();
+    const userId = randomUUID();
+    for (const sellerStatus of ["SUSPENDED", "PENDING", "REJECTED"]) {
+      const variantId = repo.seedVariant({ size: "M", color: "مشکی", stock: 10, sellerStatus });
+      const res = await request(app)
+        .post("/api/cart")
+        .set("Authorization", bearerFor(userId, "CUSTOMER"))
+        .send({ variantId, quantity: 1 });
+      expect(res.status, sellerStatus).toBe(404);
+    }
+  });
+
   it("افزودن موفق با قیمت و جمع درست", async () => {
     const { app, repo } = buildCartApp();
     const userId = randomUUID();
@@ -319,5 +332,28 @@ describe("isAvailable در پاسخ سبد", () => {
       .set("Authorization", bearerFor(userId, "CUSTOMER"));
 
     expect(res.body.data.items[0].isAvailable).toBe(false);
+  });
+
+  it("وقتی فروشنده بعداً تعلیق می‌شود، isAvailable=false می‌شود و PATCH ۴۰۴ می‌دهد", async () => {
+    const { app, repo } = buildCartApp();
+    const userId = randomUUID();
+    const variantId = repo.seedVariant({ size: "M", color: "مشکی", stock: 10 });
+    await request(app)
+      .post("/api/cart")
+      .set("Authorization", bearerFor(userId, "CUSTOMER"))
+      .send({ variantId, quantity: 1 });
+
+    repo.setSellerStatus(variantId, "SUSPENDED");
+
+    const res = await request(app)
+      .get("/api/cart")
+      .set("Authorization", bearerFor(userId, "CUSTOMER"));
+    expect(res.body.data.items[0].isAvailable).toBe(false);
+
+    const patch = await request(app)
+      .patch(`/api/cart/${variantId}`)
+      .set("Authorization", bearerFor(userId, "CUSTOMER"))
+      .send({ quantity: 2 });
+    expect(patch.status).toBe(404);
   });
 });

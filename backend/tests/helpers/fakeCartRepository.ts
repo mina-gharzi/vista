@@ -12,6 +12,8 @@ interface StoredVariant {
   price: number | null;
   stock: number;
   productStatus: string;
+  /** وضعیت فروشندهٔ محصول؛ فقط APPROVED قابل خرید است */
+  sellerStatus: string;
   product: {
     id: string;
     slug: string;
@@ -33,6 +35,7 @@ export class FakeCartRepository implements CartRepository {
     price?: number | null;
     stock: number;
     productStatus?: string;
+    sellerStatus?: string;
     basePrice?: number;
     title?: string;
     imageUrl?: string | null;
@@ -45,6 +48,7 @@ export class FakeCartRepository implements CartRepository {
       price: input.price ?? null,
       stock: input.stock,
       productStatus: input.productStatus ?? "PUBLISHED",
+      sellerStatus: input.sellerStatus ?? "APPROVED",
       product: {
         id: randomUUID(),
         slug: `product-${id.slice(0, 8)}`,
@@ -66,10 +70,19 @@ export class FakeCartRepository implements CartRepository {
     if (variant) variant.productStatus = status;
   }
 
+  setSellerStatus(variantId: string, status: string): void {
+    const variant = this.variants.get(variantId);
+    if (variant) variant.sellerStatus = status;
+  }
+
   async findVariantForCart(variantId: string): Promise<VariantForCart | null> {
     const variant = this.variants.get(variantId);
     if (!variant) return null;
-    return { id: variant.id, stock: variant.stock, product: { status: variant.productStatus } };
+    return {
+      id: variant.id,
+      stock: variant.stock,
+      product: { status: variant.productStatus, seller: { status: variant.sellerStatus } },
+    };
   }
 
   async getItems(userId: string): Promise<CartItemRow[]> {
@@ -94,6 +107,7 @@ export class FakeCartRepository implements CartRepository {
             basePrice: variant.product.basePrice,
             status: variant.productStatus,
             images: variant.product.imageUrl ? [{ url: variant.product.imageUrl }] : [],
+            seller: { status: variant.sellerStatus },
           },
         },
       });
