@@ -19,6 +19,7 @@ export function toOrderDetail(order: OrderWithRelations): OrderDetail {
     subtotal: order.subtotal,
     shippingCost: order.shippingCost,
     discountAmount: order.discountAmount,
+    couponCode: order.couponCode,
     totalAmount: order.totalAmount,
     shippingAddress: {
       fullName: order.shippingFullName,
@@ -33,6 +34,7 @@ export function toOrderDetail(order: OrderWithRelations): OrderDetail {
       sellerStoreName: so.seller.storeName,
       status: so.status as FulfillmentStatus,
       subtotal: so.subtotal,
+      discountAmount: so.discountAmount,
       trackingCode: so.trackingCode,
       shippedAt: iso(so.shippedAt),
       deliveredAt: iso(so.deliveredAt),

@@ -17,7 +17,10 @@ export interface SellerOrderSummary {
   id: string;
   sellerStoreName: string;
   status: FulfillmentStatus;
+  /** جمع ناخالص کالاهای همین فروشنده (قبل از تخفیف) */
   subtotal: number;
+  /** سهم همین فروشنده از تخفیف کوپن؛ جمع این سهم‌ها همیشه برابر OrderDetail.discountAmount است */
+  discountAmount: number;
   /** کد رهگیری فقط بعد از ارسال توسط فروشنده پر می‌شود */
   trackingCode: string | null;
   shippedAt: string | null;
@@ -75,6 +78,8 @@ export interface OrderDetail {
   subtotal: number;
   shippingCost: number;
   discountAmount: number;
+  /** Snapshot کد کوپن در لحظهٔ ثبت؛ با ویرایش/غیرفعال‌سازی بعدی کوپن عوض نمی‌شود */
+  couponCode: string | null;
   totalAmount: number;
   shippingAddress: ShippingAddressSnapshot;
   sellerOrders: SellerOrderSummary[];

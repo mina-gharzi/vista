@@ -12,6 +12,16 @@ export const checkoutSchema = z.object({
   addressId: z.string().uuid("آدرس معتبر نیست"),
   checkoutKey: z.string().uuid("کلید ثبت سفارش معتبر نیست"),
   expectedTotal: z.number().int("مبلغ معتبر نیست").min(0, "مبلغ معتبر نیست").optional(),
+  /**
+   * کد کوپن اختیاری. فقط «کد» پذیرفته می‌شود؛ مبلغ تخفیف/مشمولیت هرگز از Client خوانده نمی‌شود و Server
+   * در همین Transaction دوباره اعتبارسنجی و محاسبه می‌کند. رشتهٔ خالی = بدون کوپن.
+   */
+  couponCode: z
+    .string({ invalid_type_error: "کد تخفیف معتبر نیست" })
+    .trim()
+    .max(64, "کد تخفیف معتبر نیست")
+    .transform((value) => (value === "" ? undefined : value))
+    .optional(),
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import type { CatalogQuery } from "@vista/shared";
+import type { CatalogFilterOptions, CatalogQuery } from "@vista/shared";
+import { buildCatalogWhere, buildOrderBy, visibleProductWhere, searchConditions } from "./catalog.query";
 
 export interface ProductCardRow {
   id: string;
@@ -9,6 +10,9 @@ export interface ProductCardRow {
   compareAtPrice: number | null;
   category: { name: string };
   images: { url: string }[];
+  seller: { storeName: string; storeSlug: string };
+  /** حداکثر یک ردیف: وجود هر تنوع فعالِ موجود */
+  variants: { id: string }[];
 }
 
 export interface ProductDetailRow {
@@ -21,7 +25,7 @@ export interface ProductDetailRow {
   images: { url: string; altText: string | null }[];
   variants: { id: string; size: string; color: string; price: number | null; stock: number }[];
   category: { id: string; name: string; slug: string };
-  seller: { storeName: string };
+  seller: { storeName: string; storeSlug: string };
 }
 
 const CARD_SELECT = {
@@ -32,6 +36,9 @@ const CARD_SELECT = {
   compareAtPrice: true,
   category: { select: { name: true } },
   images: { take: 1, orderBy: { position: "asc" as const }, select: { url: true } },
+  seller: { select: { storeName: true, storeSlug: true } },
+  // فقط برای «موجود بودن»: یک ردیف کافی است و N+1 ایجاد نمی‌کند (join در همان Query)
+  variants: { where: { isActive: true, stock: { gt: 0 } }, take: 1, select: { id: true } },
 } satisfies Prisma.ProductSelect;
 
 export interface CatalogRepository {
@@ -42,6 +49,8 @@ export interface CatalogRepository {
     categoryIds: string[] | undefined,
   ): Promise<{ items: ProductCardRow[]; total: number }>;
   findPublishedBySlug(slug: string): Promise<ProductDetailRow | null>;
+  /** رنگ/سایز تنوع‌های فعال و بازهٔ قیمت در محدودهٔ دسته/جستجو */
+  filterOptions(query: { search?: string | undefined }, categoryIds: string[] | undefined): Promise<CatalogFilterOptions>;
 }
 
 export function createCatalogRepository(prisma: PrismaClient): CatalogRepository {
@@ -78,23 +87,8 @@ export function createCatalogRepository(prisma: PrismaClient): CatalogRepository
     },
 
     async findMany(query, categoryIds) {
-      const where: Prisma.ProductWhereInput = {
-        status: "PUBLISHED",
-        // محصول فروشندهٔ تعلیق‌شده/تأییدنشده برای مشتری نمایش داده نمی‌شود
-        seller: { status: "APPROVED" },
-        ...(categoryIds ? { categoryId: { in: categoryIds } } : {}),
-        ...(query.search ? { title: { contains: query.search, mode: "insensitive" } } : {}),
-        ...(query.minPrice !== undefined ? { basePrice: { gte: query.minPrice } } : {}),
-        ...(query.maxPrice !== undefined ? { basePrice: { lte: query.maxPrice } } : {}),
-        ...(query.sort === "discounted" ? { compareAtPrice: { not: null } } : {}),
-      };
-
-      const orderBy: Prisma.ProductOrderByWithRelationInput =
-        query.sort === "price_asc"
-          ? { basePrice: "asc" }
-          : query.sort === "price_desc"
-            ? { basePrice: "desc" }
-            : { createdAt: "desc" }; // newest و discounted هر دو تازه‌ترین‌ها اول
+      const where = buildCatalogWhere(query, categoryIds);
+      const orderBy = buildOrderBy(query.sort);
 
       const [items, total] = await Promise.all([
         prisma.product.findMany({
@@ -108,6 +102,28 @@ export function createCatalogRepository(prisma: PrismaClient): CatalogRepository
       ]);
 
       return { items, total };
+    },
+
+    async filterOptions(query, categoryIds) {
+      // محدودهٔ محصولات: فقط دسته + جستجو (سایر فیلترها عمداً اعمال نمی‌شود تا گزینه‌ها با انتخاب خودشان محو نشوند)
+      const productWhere: Prisma.ProductWhereInput = {
+        ...visibleProductWhere(),
+        ...(categoryIds ? { categoryId: { in: categoryIds } } : {}),
+        AND: searchConditions(query.search),
+      };
+      const variantWhere = { isActive: true, product: productWhere } satisfies Prisma.ProductVariantWhereInput;
+      const [colors, sizes, price] = await Promise.all([
+        prisma.productVariant.findMany({ where: variantWhere, distinct: ["color"], select: { color: true }, orderBy: { color: "asc" }, take: 60 }),
+        prisma.productVariant.findMany({ where: variantWhere, distinct: ["size"], select: { size: true }, take: 60 }),
+        prisma.product.aggregate({ where: productWhere, _min: { basePrice: true }, _max: { basePrice: true } }),
+      ]);
+      const min = price._min.basePrice;
+      const max = price._max.basePrice;
+      return {
+        colors: colors.map((c) => c.color),
+        sizes: sizes.map((s) => s.size),
+        priceRange: min === null || max === null ? null : { min, max },
+      };
     },
 
     async findPublishedBySlug(slug) {
@@ -126,7 +142,7 @@ export function createCatalogRepository(prisma: PrismaClient): CatalogRepository
             select: { id: true, size: true, color: true, price: true, stock: true },
           },
           category: { select: { id: true, name: true, slug: true } },
-          seller: { select: { storeName: true } },
+          seller: { select: { storeName: true, storeSlug: true } },
         },
       });
     },

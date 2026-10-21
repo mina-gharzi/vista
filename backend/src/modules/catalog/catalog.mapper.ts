@@ -10,6 +10,9 @@ export function toProductCard(row: ProductCardRow): ProductCardSummary {
     basePrice: row.basePrice,
     compareAtPrice: row.compareAtPrice,
     categoryName: row.category.name,
+    sellerStoreName: row.seller.storeName,
+    sellerStoreSlug: row.seller.storeSlug,
+    inStock: row.variants.length > 0,
   };
 }
 
@@ -25,5 +28,6 @@ export function toProductDetail(row: ProductDetailRow): PublicProductDetail {
     variants: row.variants,
     category: row.category,
     sellerStoreName: row.seller.storeName,
+    sellerStoreSlug: row.seller.storeSlug,
   };
 }

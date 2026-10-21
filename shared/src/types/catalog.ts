@@ -7,6 +7,11 @@ export interface ProductCardSummary {
   basePrice: number;
   compareAtPrice: number | null;
   categoryName: string;
+  /** نام و slug فروشگاه (اطلاعات عمومی ویترین؛ هیچ داده داخلی فروشنده نیست) */
+  sellerStoreName: string;
+  sellerStoreSlug: string;
+  /** حداقل یک تنوع فعال با موجودی > ۰ دارد */
+  inStock: boolean;
 }
 
 export interface PublicProductVariant {
@@ -35,6 +40,14 @@ export interface PublicProductDetail {
   variants: PublicProductVariant[];
   category: { id: string; name: string; slug: string };
   sellerStoreName: string;
+  sellerStoreSlug: string;
+}
+
+/** رنگ‌ها/سایزهای موجود و بازهٔ قیمت در محدودهٔ دسته/جستجو (برای ساخت فیلترها) */
+export interface CatalogFilterOptions {
+  colors: string[];
+  sizes: string[];
+  priceRange: { min: number; max: number } | null;
 }
 
 export type ProductSortOption = "newest" | "price_asc" | "price_desc" | "discounted";

@@ -18,6 +18,7 @@ export interface AdminOrderDetailRow {
   subtotal: number;
   shippingCost: number;
   discountAmount: number;
+  couponCode: string | null;
   totalAmount: number;
   createdAt: Date;
   paidAt: Date | null;
@@ -37,6 +38,7 @@ export interface AdminOrderDetailRow {
     sellerName: string;
     status: string;
     subtotal: number;
+    discountAmount: number;
     trackingCode: string | null;
     shippedAt: Date | null;
     deliveredAt: Date | null;
@@ -131,6 +133,7 @@ export function createAdminOrdersRepository(prisma: PrismaClient): AdminOrdersRe
           subtotal: true,
           shippingCost: true,
           discountAmount: true,
+          couponCode: true,
           totalAmount: true,
           createdAt: true,
           paidAt: true,
@@ -149,6 +152,7 @@ export function createAdminOrdersRepository(prisma: PrismaClient): AdminOrdersRe
               sellerId: true,
               status: true,
               subtotal: true,
+              discountAmount: true,
               trackingCode: true,
               shippedAt: true,
               deliveredAt: true,
@@ -181,6 +185,7 @@ export function createAdminOrdersRepository(prisma: PrismaClient): AdminOrdersRe
         subtotal: order.subtotal,
         shippingCost: order.shippingCost,
         discountAmount: order.discountAmount,
+        couponCode: order.couponCode,
         totalAmount: order.totalAmount,
         createdAt: order.createdAt,
         paidAt: order.paidAt,
@@ -200,6 +205,7 @@ export function createAdminOrdersRepository(prisma: PrismaClient): AdminOrdersRe
           sellerName: so.seller.storeName,
           status: so.status,
           subtotal: so.subtotal,
+          discountAmount: so.discountAmount,
           trackingCode: so.trackingCode,
           shippedAt: so.shippedAt,
           deliveredAt: so.deliveredAt,

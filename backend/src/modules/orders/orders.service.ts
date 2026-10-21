@@ -1,5 +1,8 @@
 import {
+  COUPON_ERROR_CODES,
   isOrderCancellableByCustomer,
+  isValidCouponCode,
+  normalizeCouponCode,
   type CheckoutInput,
   type FulfillmentStatus,
   type OrderDetail,
@@ -10,6 +13,8 @@ import {
 } from "@vista/shared";
 import { NotFoundError } from "../../errors/AppError";
 import type { PaymentProvider } from "../../payment/PaymentProvider";
+import { evaluateCoupon, type CouponEvaluation } from "../coupons/coupons.engine";
+import { CouponRuleError, couponInvalid } from "../coupons/coupons.errors";
 import {
   CheckoutEmptyCartError,
   CheckoutItemsUnavailableError,
@@ -18,6 +23,7 @@ import {
   type UnavailableLine,
 } from "./orders.errors";
 import { toOrderDetail, toOrderListItem } from "./orders.mapper";
+import { computeCharges, toPricedLines, unitPriceOf } from "./orders.pricing";
 import {
   DuplicateCheckoutKeyError,
   type CartLine,
@@ -25,6 +31,7 @@ import {
   type NewOrderData,
   type OrderWithRelations,
   type OrdersRepository,
+  type OrdersTx,
 } from "./orders.repository";
 
 export interface CheckoutResult {
@@ -39,22 +46,6 @@ export interface OrdersService {
   getDetail(userId: string, orderId: string): Promise<OrderDetail>;
   cancel(userId: string, orderId: string): Promise<OrderDetail>;
 }
-
-/**
- * Shipping و Discount در این نسخه «قانون پیاده‌سازی‌شده» ندارند (Phase Shipping/Coupons)؛ مقدار صفر
- * صریحاً اینجا ثبت شده تا مبلغ دلخواهی بی‌صدا اعمال نشود. وقتی قانون تعریف شد فقط همین تابع عوض می‌شود.
- */
-function computeCharges(subtotal: number): {
-  shippingCost: number;
-  discountAmount: number;
-  totalAmount: number;
-} {
-  const shippingCost = 0;
-  const discountAmount = 0;
-  return { shippingCost, discountAmount, totalAmount: subtotal + shippingCost - discountAmount };
-}
-
-const unitPriceOf = (line: CartLine): number => line.variantPrice ?? line.basePrice;
 
 /** فقط کالاهای «قابل خرید»: محصول منتشرشده + تنوع فعال + فروشنده تأییدشده + موجودی کافی */
 function findProblems(lines: CartLine[]): UnavailableLine[] {
@@ -88,10 +79,60 @@ function findProblems(lines: CartLine[]): UnavailableLine[] {
  * ⚠️ فقط MockPaymentProvider (توسعه/دمو، در index.ts و فقط خارج از Production) تأیید خودکار انجام می‌دهد؛
  * این «تأیید پرداخت واقعی» نیست. تأیید درگاه واقعی/Webhook در Feature «Payment» است.
  */
+export interface OrdersServiceOptions {
+  /** ساعت تزریق‌پذیر (فقط برای تست انقضا/شروع کوپن) */
+  now?: () => Date;
+}
+
+/** کوپن «اعمال‌شده» داخل Transaction: شناسه + Snapshot کد + نتیجهٔ محاسبه */
+interface AppliedCoupon {
+  couponId: string;
+  code: string;
+  evaluation: CouponEvaluation;
+}
+
 export function createOrdersService(
   repository: OrdersRepository,
   paymentProvider: PaymentProvider | null,
+  options: OrdersServiceOptions = {},
 ): OrdersService {
+  const now = options.now ?? (() => new Date());
+
+  /**
+   * اعتبارسنجی «و مصرف» کوپن، فقط داخل Transaction ثبت سفارش و بعد از قفل کاربر:
+   *  - مشمولیت/قیمت‌ها فقط از دیتابیس (سبد + کوپن + جدول دسته‌ها).
+   *  - سقف هر مشتری: چون Checkoutهای یک کاربر با lockUser پشت‌سرهم‌اند، شمارش امن است.
+   *  - سقف کل: tryConsumeCoupon یک UPDATE شرطی اتمیک است (Race روی آخرین ظرفیت امن).
+   * هر شکستی بعد از این نقطه، کل Transaction (از جمله مصرف کوپن) را برمی‌گرداند.
+   */
+  async function applyCoupon(
+    tx: OrdersTx,
+    userId: string,
+    rawCode: string,
+    lines: readonly CartLine[],
+  ): Promise<AppliedCoupon> {
+    const normalized = normalizeCouponCode(rawCode);
+    if (!isValidCouponCode(normalized)) throw couponInvalid();
+    const coupon = await tx.findCouponByCode(normalized);
+    if (!coupon) throw couponInvalid();
+
+    const parents = await tx.loadCategoryParents();
+    const userRedemptions =
+      coupon.perUserLimit === null ? 0 : await tx.countActiveRedemptions(coupon.id, userId);
+    const evaluation = evaluateCoupon({
+      coupon,
+      lines: toPricedLines(lines, parents),
+      userRedemptions,
+      now: now(),
+    });
+
+    if (!(await tx.tryConsumeCoupon(coupon.id))) {
+      // بین خواندن و مصرف، ظرفیت تمام شده یا ادمین کوپن را غیرفعال کرده است
+      throw new CouponRuleError(COUPON_ERROR_CODES.USAGE_LIMIT_REACHED);
+    }
+    return { couponId: coupon.id, code: coupon.code, evaluation };
+  }
+
   async function settleDevPayment(order: OrderWithRelations): Promise<OrderWithRelations> {
     if (!paymentProvider || order.status !== "PENDING") return order;
     const session = await paymentProvider.createPaymentSession({
@@ -129,7 +170,12 @@ export function createOrdersService(
 
           // قیمت‌ها فقط از دیتابیس؛ هیچ مبلغی از Client پذیرفته نمی‌شود
           const subtotal = lines.reduce((sum, line) => sum + unitPriceOf(line) * line.quantity, 0);
-          const charges = computeCharges(subtotal);
+
+          // کوپن (اختیاری): مبلغ تخفیف «فقط» از موتور سمت سرور می‌آید؛ از Client فقط خودِ کد پذیرفته می‌شود
+          const applied = input.couponCode
+            ? await applyCoupon(tx, userId, input.couponCode, lines)
+            : null;
+          const charges = computeCharges(subtotal, applied?.evaluation.discountAmount ?? 0);
           if (input.expectedTotal !== undefined && input.expectedTotal !== charges.totalAmount) {
             throw new CheckoutPriceChangedError(input.expectedTotal, charges.totalAmount);
           }
@@ -168,6 +214,8 @@ export function createOrdersService(
             checkoutKey: input.checkoutKey,
             subtotal,
             ...charges,
+            couponId: applied?.couponId ?? null,
+            couponCode: applied?.code ?? null,
             address: {
               fullName: address.fullName,
               phone: address.phone,
@@ -179,10 +227,12 @@ export function createOrdersService(
             sellerOrders: [...bySeller.entries()].map(([sellerId, sellerLines]) => ({
               sellerId,
               subtotal: sellerLines.reduce((sum, l) => sum + unitPriceOf(l) * l.quantity, 0),
+              discountAmount: applied?.evaluation.sellerDiscounts.get(sellerId) ?? 0,
               items: sellerLines.map((l) => ({
                 variantId: l.variantId,
                 quantity: l.quantity,
                 unitPrice: unitPriceOf(l),
+                discountAmount: applied?.evaluation.lineDiscounts.get(l.variantId) ?? 0,
                 productTitle: l.productTitle,
                 sku: l.sku,
                 size: l.size,
@@ -193,6 +243,15 @@ export function createOrdersService(
           };
 
           const order = await tx.createOrder(data);
+          if (applied) {
+            // orderId یکتاست: حتی در بدترین حالت، یک سفارش هرگز دو بار مصرف ثبت نمی‌کند
+            await tx.createRedemption({
+              couponId: applied.couponId,
+              userId,
+              orderId: order.id,
+              discountAmount: charges.discountAmount,
+            });
+          }
           await tx.recordMovements(movements.map((m) => ({ ...m, orderId: order.id })));
           // سبد فقط اینجا، در همان Transaction و بعد از ساخته‌شدن سفارش خالی می‌شود
           await tx.clearCart(userId);
@@ -265,6 +324,8 @@ export function createOrdersService(
           );
         }
         await tx.cancelPendingSellerOrders(target.id);
+        // سفارش پرداخت‌نشده لغو شد → استفادهٔ کوپن آزاد می‌شود (CAS؛ لغو مجدد/موازی دوباره آزاد نمی‌کند)
+        await tx.releaseCouponRedemption(target.id);
 
         // برگرداندن موجودی دقیقاً همان مقداری که ثبت سفارش کسر کرده بود؛ فقط در همین مسیر (یک‌بار)
         const merged = new Map<string, number>();

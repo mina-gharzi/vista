@@ -44,6 +44,7 @@ model User {
   inventoryMovements InventoryMovement[]
   sellerOrderEvents  SellerOrderEvent[]
   adminAuditLogs     AdminAuditLog[]    @relation("AdminAuditActor")
+  couponRedemptions  CouponRedemption[]
 
   @@map("users")
 }
@@ -86,6 +87,7 @@ model Seller {
 
   products     Product[]
   sellerOrders SellerOrder[]
+  coupons      Coupon[]
 
   @@map("sellers")
 }
@@ -163,6 +165,8 @@ model Product {
   @@index([categoryId])
   // Catalog: فقط محصولات منتشرشده، جدیدترین‌ها اول
   @@index([status, createdAt])
+  // Catalog: مرتب‌سازی قیمت (EXPLAIN روی ۵۰k ردیف ساختگی: Seq Scan ~12ms → Index Scan ~0.13ms)
+  @@index([status, basePrice])
   @@map("products")
 }
 
@@ -329,6 +333,12 @@ model Order {
   discountAmount Int @default(0)
   totalAmount    Int
 
+  // کوپن اعمال‌شده (حداکثر یک). couponCode Snapshot است: با ویرایش یا غیرفعال‌سازی بعدی کوپن تغییر نمی‌کند.
+  // هر discountAmount > 0 باید couponId داشته باشد (CHECK).
+  couponId   String?
+  coupon     Coupon? @relation(fields: [couponId], references: [id], onDelete: Restrict)
+  couponCode String?
+
   // Snapshot آدرس در لحظه ثبت — ویرایش/حذف Address بعدی روی سفارش قبلی اثر ندارد
   shippingFullName    String
   shippingPhone       String
@@ -348,7 +358,8 @@ model Order {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  sellerOrders SellerOrder[]
+  sellerOrders     SellerOrder[]
+  couponRedemption CouponRedemption?
 
   @@unique([userId, checkoutKey])
   @@index([userId, status, createdAt])
@@ -363,8 +374,10 @@ model SellerOrder {
   sellerId     String
   seller       Seller            @relation(fields: [sellerId], references: [id])
   status       FulfillmentStatus @default(PENDING)
-  // جمع مبلغ کالاهای همین فروشنده (تومان)
+  // جمع ناخالص کالاهای همین فروشنده (تومان، قبل از تخفیف)
   subtotal     Int
+  // سهم همین فروشنده از تخفیف کوپن؛ 0 <= discountAmount <= subtotal (CHECK)
+  discountAmount Int @default(0)
   trackingCode String?
   shippedAt    DateTime?
   deliveredAt  DateTime?
@@ -408,6 +421,8 @@ model OrderItem {
   quantity      Int
   // Snapshot در لحظه سفارش — تغییر بعدی قیمت/عنوان/سایز روی سفارش قبلی اثر ندارد
   unitPrice     Int
+  // سهم این ردیف از تخفیف کوپن (تومان)؛ جمع ردیف‌های یک فروشنده = SellerOrder.discountAmount
+  discountAmount Int @default(0)
   productTitle  String
   sku           String
   size          String
@@ -418,6 +433,76 @@ model OrderItem {
   @@index([sellerOrderId])
   @@index([variantId])
   @@map("order_items")
+}
+
+// ---------------------------------------------------------------------------
+// Coupons
+// ---------------------------------------------------------------------------
+//
+// کوپن فقط توسط ادمین مدیریت می‌شود. محدودیت‌ها: فروشنده (اختیاری) + محصول‌ها + دسته‌ها (آرایه‌ها بدون FK:
+// حذف دسته/محصول هرگز محدودیت را «بازتر» نمی‌کند؛ شناسهٔ معلق فقط چیزی را مشمول نمی‌کند).
+// مبالغ همه عدد صحیح تومان. قوانین بین‌فیلدی در CHECKهای Migration هم تکرار شده‌اند.
+
+enum CouponDiscountType {
+  FIXED
+  PERCENTAGE
+}
+
+enum CouponRedemptionStatus {
+  ACTIVE // سفارش ثبت شده و لغو نشده
+  RELEASED // سفارش پرداخت‌نشده لغو شد و استفاده آزاد شد
+}
+
+model Coupon {
+  id                String             @id @default(uuid())
+  // نرمال‌شده: حروف بزرگ لاتین/رقم/-/_ ؛ یکتایی در سطح دیتابیس
+  code              String             @unique
+  description       String?
+  discountType      CouponDiscountType
+  // FIXED: تومان ؛ PERCENTAGE: ۱ تا ۱۰۰
+  discountValue     Int
+  // فقط درصدی؛ سقف تخفیف (تومان)
+  maxDiscountAmount Int?
+  // حداقل جمع «کالاهای مشمول» (تومان)
+  minPurchaseAmount Int?
+  startsAt          DateTime?
+  expiresAt         DateTime?
+  isActive          Boolean            @default(true)
+  // null = نامحدود
+  usageLimit        Int?
+  perUserLimit      Int?
+  // شمارندهٔ استفادهٔ فعال؛ فقط با UPDATE شرطی اتمیک تغییر می‌کند (usedCount <= usageLimit با CHECK)
+  usedCount         Int                @default(0)
+  sellerId          String?
+  seller            Seller?            @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  productIds        String[]           @default([])
+  categoryIds       String[]           @default([])
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  redemptions CouponRedemption[]
+  orders      Order[]
+
+  @@map("coupons")
+}
+
+// هر سفارشِ دارای کوپن دقیقاً یک ردیف دارد (orderId یکتا) → ثبت سفارش تکراری هرگز دو بار مصرف نمی‌کند.
+model CouponRedemption {
+  id             String                 @id @default(uuid())
+  couponId       String
+  coupon         Coupon                 @relation(fields: [couponId], references: [id], onDelete: Restrict)
+  userId         String
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  orderId        String                 @unique
+  order          Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  discountAmount Int
+  status         CouponRedemptionStatus @default(ACTIVE)
+  createdAt      DateTime               @default(now())
+  releasedAt     DateTime?
+
+  // شمارش سقف هر مشتری در Checkout و آمار ادمین
+  @@index([couponId, userId, status])
+  @@map("coupon_redemptions")
 }
 
 // ---------------------------------------------------------------------------

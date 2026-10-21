@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import type { CouponsRepository } from "../../src/modules/coupons/coupons.repository";
+import { createFakeCouponStore, createLookups } from "./fakeCouponStore";
 import {
   DuplicateCheckoutKeyError,
   type AddressRow,
@@ -14,6 +16,8 @@ import {
 
 interface FakeVariant {
   id: string;
+  productId: string;
+  categoryId: string;
   stock: number;
   active: boolean;
   price: number | null;
@@ -37,6 +41,8 @@ interface FakeOrderRow {
   shippingCost: number;
   discountAmount: number;
   totalAmount: number;
+  couponId: string | null;
+  couponCode: string | null;
   address: Omit<AddressRow, "id">;
   paidAt: Date | null;
   cancelledAt: Date | null;
@@ -46,6 +52,7 @@ interface FakeOrderRow {
     sellerId: string;
     status: string;
     subtotal: number;
+    discountAmount: number;
     trackingCode: string | null;
     items: NewOrderData["sellerOrders"][number]["items"];
   }[];
@@ -63,12 +70,15 @@ const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
  */
 export function createFakeOrdersRepository() {
   const sellers = new Map<string, { status: string; storeName: string }>();
+  // کوپن‌ها و جداول مرجع (فروشنده/محصول/دسته) برای مشمولیت و Repository ادمین
+  const lookups = createLookups();
+  const couponStore = createFakeCouponStore(lookups);
   const variants = new Map<string, FakeVariant>();
   const carts = new Map<string, { variantId: string; quantity: number }[]>();
   const addresses: (AddressRow & { userId: string })[] = [];
   const orders: FakeOrderRow[] = [];
   const movements: (MovementRow & { createdAt: number })[] = [];
-  const faults = { failOnCreateOrder: false, failOnRecordMovements: false };
+  const faults = { failOnCreateOrder: false, failOnRecordMovements: false, failOnCreateRedemption: false };
   const locks = new Map<string, Promise<void>>();
   let orderSeq = 1000;
   let clock = 1_790_000_000_000;
@@ -81,6 +91,7 @@ export function createFakeOrdersRepository() {
     shippingCost: row.shippingCost,
     discountAmount: row.discountAmount,
     totalAmount: row.totalAmount,
+    couponCode: row.couponCode,
     shippingFullName: row.address.fullName,
     shippingPhone: row.address.phone,
     shippingProvince: row.address.province,
@@ -94,6 +105,7 @@ export function createFakeOrdersRepository() {
       id: so.id,
       status: so.status,
       subtotal: so.subtotal,
+      discountAmount: so.discountAmount,
       trackingCode: so.trackingCode,
       shippedAt: null,
       deliveredAt: null,
@@ -140,6 +152,8 @@ export function createFakeOrdersRepository() {
         const v = variants.get(item.variantId)!;
         return {
           variantId: v.id,
+          productId: v.productId,
+          categoryId: v.categoryId,
           quantity: item.quantity,
           variantActive: v.active,
           stock: v.stock,
@@ -195,6 +209,8 @@ export function createFakeOrdersRepository() {
         shippingCost: data.shippingCost,
         discountAmount: data.discountAmount,
         totalAmount: data.totalAmount,
+        couponId: data.couponId,
+        couponCode: data.couponCode,
         address: data.address,
         paidAt: null,
         cancelledAt: null,
@@ -204,6 +220,7 @@ export function createFakeOrdersRepository() {
           sellerId: so.sellerId,
           status: "PENDING",
           subtotal: so.subtotal,
+          discountAmount: so.discountAmount,
           trackingCode: null,
           items: so.items,
         })),
@@ -277,6 +294,37 @@ export function createFakeOrdersRepository() {
       const row = orders.find((o) => o.id === orderId && o.userId === userId);
       return row ? toOrder(row) : null;
     },
+
+    async findCouponByCode(code) {
+      await tick();
+      return couponStore.findRulesByCode(code);
+    },
+
+    async countActiveRedemptions(couponId, userId) {
+      await tick();
+      return couponStore.countActive(couponId, userId);
+    },
+
+    async loadCategoryParents() {
+      await tick();
+      return couponStore.categoryParents();
+    },
+
+    async tryConsumeCoupon(couponId) {
+      await tick();
+      return couponStore.tryConsume(couponId, undo);
+    },
+
+    async createRedemption(input) {
+      await tick();
+      if (faults.failOnCreateRedemption) throw new Error("injected redemption failure");
+      couponStore.createRedemption(input, undo);
+    },
+
+    async releaseCouponRedemption(orderId) {
+      await tick();
+      return couponStore.release(orderId, undo);
+    },
   });
 
   const repository: OrdersRepository = {
@@ -342,14 +390,67 @@ export function createFakeOrdersRepository() {
   };
 
   let variantSeq = 0;
+  const defaultCategory = randomUUID();
+  lookups.categories.set(defaultCategory, { name: "پیش‌فرض", parentId: null });
+
+  /** Repository پیش‌نمایش کوپن روی همین سبد/داده‌ها (همان منبع حقیقت Checkout) */
+  const couponsRepository: CouponsRepository = {
+    async findByCode(code) {
+      await tick();
+      return couponStore.findRulesByCode(code);
+    },
+    async countActiveRedemptions(couponId, userId) {
+      await tick();
+      return couponStore.countActive(couponId, userId);
+    },
+    async loadCartLines(userId) {
+      await tick();
+      return (carts.get(userId) ?? []).map((item) => {
+        const v = variants.get(item.variantId)!;
+        return {
+          variantId: v.id,
+          productId: v.productId,
+          categoryId: v.categoryId,
+          quantity: item.quantity,
+          variantActive: v.active,
+          stock: v.stock,
+          variantPrice: v.price,
+          basePrice: v.basePrice,
+          productStatus: v.productStatus,
+          productSlug: v.slug,
+          productTitle: v.title,
+          imageUrl: null,
+          sku: v.sku,
+          size: v.size,
+          color: v.color,
+          sellerId: v.sellerId,
+          sellerStatus: sellers.get(v.sellerId)?.status ?? "PENDING",
+        };
+      });
+    },
+    async loadCategoryParents() {
+      await tick();
+      return couponStore.categoryParents();
+    },
+  };
+
   return {
     repository,
+    couponsRepository,
+    coupons: couponStore,
+    defaultCategory,
+    addCategory(parentId: string | null = null, name = `دسته ${lookups.categories.size}`) {
+      const id = randomUUID();
+      lookups.categories.set(id, { name, parentId });
+      return id;
+    },
     faults,
     orders,
     movements,
     addSeller(status = "APPROVED", storeName = `فروشگاه ${sellers.size + 1}`) {
       const id = randomUUID();
       sellers.set(id, { status, storeName });
+      lookups.sellers.set(id, storeName);
       return id;
     },
     setSellerStatus(sellerId: string, status: string) {
@@ -363,11 +464,21 @@ export function createFakeOrdersRepository() {
       title?: string;
       productStatus?: string;
       active?: boolean;
+      /** چند تنوع از یک محصول */
+      productId?: string;
+      categoryId?: string;
     }) {
       const id = randomUUID();
       variantSeq += 1;
+      const productId = input.productId ?? randomUUID();
+      const categoryId = input.categoryId ?? defaultCategory;
+      if (!lookups.products.has(productId)) {
+        lookups.products.set(productId, { sellerId: input.sellerId, title: input.title ?? `کت ${variantSeq}` });
+      }
       variants.set(id, {
         id,
+        productId,
+        categoryId,
         stock: input.stock,
         active: input.active ?? true,
         price: input.price ?? null,

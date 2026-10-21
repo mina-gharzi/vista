@@ -62,9 +62,12 @@ export type AdminAuditAction =
   | "PRODUCT_STATUS_CHANGED"
   | "CATEGORY_CREATED"
   | "CATEGORY_UPDATED"
-  | "CATEGORY_DELETED";
+  | "CATEGORY_DELETED"
+  | "COUPON_CREATED"
+  | "COUPON_UPDATED"
+  | "COUPON_STATUS_CHANGED";
 
-export type AdminAuditTargetType = "SELLER" | "PRODUCT" | "CATEGORY";
+export type AdminAuditTargetType = "SELLER" | "PRODUCT" | "CATEGORY" | "COUPON";
 
 export interface AdminAuditEntry {
   id: string;
@@ -211,6 +214,8 @@ export interface AdminOrderDetail {
   subtotal: number;
   shippingCost: number;
   discountAmount: number;
+  /** Snapshot کد کوپن سفارش (null = بدون کوپن) */
+  couponCode: string | null;
   totalAmount: number;
   createdAt: string;
   paidAt: string | null;
@@ -225,6 +230,8 @@ export interface AdminOrderDetail {
     sellerName: string;
     status: FulfillmentStatus;
     subtotal: number;
+    /** سهم همین فروشنده از تخفیف کوپن */
+    discountAmount: number;
     trackingCode: string | null;
     shippedAt: string | null;
     deliveredAt: string | null;
