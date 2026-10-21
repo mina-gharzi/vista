@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { Button, Card, EmptyState, ErrorState, Skeleton } from "@/components/ui";
 import { cartApi } from "@/lib/api/cart";
 import { formatPrice } from "@/lib/utils/format";
+import { CouponBox } from "@/features/coupons/CouponBox";
+import { cartSignature, useCoupon } from "@/features/coupons/useCoupon";
 import { CartItemRow } from "./components/CartItemRow";
 
 type LoadState = "loading" | "error" | "ready";
@@ -13,6 +15,8 @@ type LoadState = "loading" | "error" | "ready";
 export function CartView() {
   const [cart, setCart] = useState<CartSummary | null>(null);
   const [state, setState] = useState<LoadState>("loading");
+  // کوپن با هر تغییر سبد دوباره از سرور اعتبارسنجی می‌شود (کد با sessionStorage به Checkout هم می‌رسد)
+  const coupon = useCoupon(cart ? cartSignature(cart.items) : "");
 
   const load = () => {
     setState("loading");
@@ -55,6 +59,8 @@ export function CartView() {
   }
 
   const hasUnavailable = cart.items.some((item) => !item.isAvailable);
+  const applied = coupon.applied;
+  const payable = applied ? applied.totalAmount : cart.subtotal;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
@@ -69,6 +75,21 @@ export function CartView() {
           <span className="text-ink-muted">جمع کل ({cart.itemCount} کالا)</span>
           <span className="type-price">{formatPrice(cart.subtotal)}</span>
         </div>
+        <CouponBox coupon={coupon} />
+        {applied && (
+          <div className="flex items-center justify-between text-sm text-success">
+            <span>تخفیف ({applied.code})</span>
+            <span>−{formatPrice(applied.discountAmount)}</span>
+          </div>
+        )}
+        {applied && (
+          <div className="flex items-center justify-between border-t border-border pt-3">
+            <span className="type-label">مبلغ قابل پرداخت</span>
+            <span className="type-price" aria-busy={coupon.busy}>
+              {formatPrice(payable)}
+            </span>
+          </div>
+        )}
         {hasUnavailable && (
           <p className="text-sm text-danger">
             برای ادامه، کالاهای با موجودی ناکافی را از سبد حذف یا تعدادشان را اصلاح کنید.

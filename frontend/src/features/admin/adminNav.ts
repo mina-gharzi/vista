@@ -11,4 +11,5 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
   { key: "products", label: "محصولات", href: "/admin/products" },
   { key: "categories", label: "دسته‌بندی‌ها", href: "/admin/categories" },
   { key: "orders", label: "سفارش‌ها", href: "/admin/orders" },
+  { key: "coupons", label: "کوپن‌ها", href: "/admin/coupons" },
 ];

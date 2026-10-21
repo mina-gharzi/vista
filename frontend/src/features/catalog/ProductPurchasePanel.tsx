@@ -2,7 +2,7 @@
 
 import type { PublicProductVariant } from "@vista/shared";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Badge, Button, Select, useToast } from "@/components/ui";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { WishlistButton } from "@/features/wishlist/WishlistButton";
@@ -80,6 +80,9 @@ export function ProductPurchasePanel({
   const [size, setSize] = useState(sizes.length === 1 ? (sizes[0] ?? "") : "");
   const [quantity, setQuantity] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  // Ref علاوه بر state: دو کلیک پشت‌سرهم قبل از Render بعدی هم فقط یک درخواست می‌سازد
+  const inFlight = useRef(false);
+  const [cartError, setCartError] = useState<{ message: string; stale: boolean; authExpired: boolean } | null>(null);
 
   const selected = resolveVariant(variants, color, size);
   const state = combinationState(variants, color, size);
@@ -92,15 +95,27 @@ export function ProductPurchasePanel({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!selected || selected.stock === 0 || submitting) return;
+    if (!selected || selected.stock === 0 || inFlight.current) return;
+    inFlight.current = true;
     setSubmitting(true);
+    setCartError(null);
     try {
       await cartApi.addItem({ variantId: selected.id, quantity });
       toast({ title: "به سبد خرید اضافه شد", variant: "success" });
     } catch (error) {
-      const message = error instanceof ApiRequestError ? error.message : "خطایی رخ داد، دوباره تلاش کنید";
-      toast({ title: "افزودن به سبد ناموفق بود", description: message, variant: "error" });
+      // قیمت/موجودی/وضعیت را فقط Backend تعیین می‌کند؛ اینجا فقط پیام را توضیح می‌دهیم و راه بازیابی می‌دهیم.
+      if (error instanceof ApiRequestError) {
+        setCartError({
+          message: error.status === 401 ? "نشست شما منقضی شده است." : error.message,
+          // 404: کالا/تنوع دیگر قابل خرید نیست؛ 409: موجودی کافی نیست → اطلاعات صفحه کهنه است
+          stale: error.status === 404 || error.status === 409,
+          authExpired: error.status === 401,
+        });
+      } else {
+        setCartError({ message: "خطایی رخ داد، دوباره تلاش کنید", stale: false, authExpired: false });
+      }
     } finally {
+      inFlight.current = false;
       setSubmitting(false);
     }
   };
@@ -230,6 +245,25 @@ export function ProductPurchasePanel({
                 افزودن به سبد خرید
               </Button>
             </form>
+          )}
+          {cartError && (
+            <div role="alert" className="mt-3 flex flex-col gap-2 rounded border border-danger bg-danger-tint p-3 text-sm text-danger">
+              <p>{cartError.message}</p>
+              {cartError.stale && (
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="self-start underline underline-offset-4"
+                >
+                  به‌روزرسانی صفحه و موجودی
+                </button>
+              )}
+              {cartError.authExpired && (
+                <Link href="/login" className="self-start underline underline-offset-4">
+                  ورود دوباره
+                </Link>
+              )}
+            </div>
           )}
         </div>
         <WishlistButton productId={productId} />

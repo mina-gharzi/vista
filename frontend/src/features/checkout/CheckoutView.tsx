@@ -11,6 +11,8 @@ import { ordersApi } from "@/lib/api/orders";
 import { cn } from "@/lib/utils/cn";
 import { formatNumber, formatPrice } from "@/lib/utils/format";
 import { newUuid } from "@/lib/utils/uuid";
+import { CouponBox } from "@/features/coupons/CouponBox";
+import { cartSignature, useCoupon } from "@/features/coupons/useCoupon";
 import { AddressForm } from "./AddressForm";
 import { describeCheckoutError, type DescribedCheckoutError } from "./checkoutErrors";
 
@@ -62,6 +64,8 @@ export function CheckoutView() {
   const [problem, setProblem] = useState<DescribedCheckoutError | null>(null);
   const [priceNotice, setPriceNotice] = useState<{ previous: number; current: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // کوپن همیشه روی سبد فعلی سرور بازمحاسبه می‌شود؛ مبلغ نمایش‌داده‌شده = پاسخ سرور
+  const coupon = useCoupon(cart ? cartSignature(cart.items) : "");
 
   /**
    * کلید یکتای «این تلاش» برای Idempotency سمت سرور. تا وقتی کاربر ورودی را عوض نکرده
@@ -75,6 +79,15 @@ export function CheckoutView() {
   const renewKey = () => {
     checkoutKey.current = newUuid();
   };
+
+  // ورودی Checkout عوض می‌شود (کوپن اعمال/حذف شد) → «تلاش جدید» با کلید جدید؛ وگرنه سرور سفارش قبلی را برمی‌گرداند
+  const appliedCode = coupon.applied?.code ?? null;
+  const previousCode = useRef(appliedCode);
+  useEffect(() => {
+    if (previousCode.current === appliedCode) return;
+    previousCode.current = appliedCode;
+    checkoutKey.current = newUuid();
+  }, [appliedCode]);
 
   useEffect(() => {
     Promise.all([cartApi.get(), addressesApi.list()])
@@ -116,15 +129,18 @@ export function CheckoutView() {
     inFlight.current = true;
     setProblem(null);
     setSubmitting(true);
-    const seenTotal = cart.subtotal;
+    const seenTotal = coupon.applied ? coupon.applied.totalAmount : cart.subtotal;
     try {
       const order = await ordersApi.checkout({
         addressId: selectedAddressId,
         checkoutKey: checkoutKey.current,
         // مبلغی که کاربر دیده؛ فقط برای تأیید (سرور خودش از دیتابیس محاسبه می‌کند)
         expectedTotal: seenTotal,
+        // فقط خودِ کد؛ مبلغ تخفیف/مشمولیت هرگز از Client خوانده نمی‌شود
+        ...(coupon.applied ? { couponCode: coupon.applied.code } : {}),
       });
       setPriceNotice(null);
+      coupon.clearStored();
       router.replace(`/orders/${order.id}?placed=1`);
       router.refresh();
       // عمداً submitting را false نمی‌کنیم: تا لحظهٔ Navigation دکمه قفل می‌ماند
@@ -138,6 +154,13 @@ export function CheckoutView() {
         }
       }
       if (described.kind === "empty_cart") await refreshCart();
+      if (described.kind === "coupon") {
+        // کوپن رد شد (منقضی/تمام‌شده/نامعتبر...): حذف + اعلان کنار فیلد کد؛ سفارش ثبت نشده است
+        coupon.drop(described.message);
+        inFlight.current = false;
+        setSubmitting(false);
+        return;
+      }
       setProblem(described);
       inFlight.current = false;
       setSubmitting(false);
@@ -173,6 +196,8 @@ export function CheckoutView() {
 
   const unavailableInfo = problem?.kind === "unavailable" ? problem.unavailable : {};
   const hasUnavailable = cart.items.some((item) => !item.isAvailable);
+  const applied = coupon.applied;
+  const payable = applied ? applied.totalAmount : cart.subtotal;
   const step: 0 | 1 | 2 = selectedAddressId ? 2 : 1;
 
   return (
@@ -277,13 +302,22 @@ export function CheckoutView() {
             <span>جمع کالاها ({formatNumber(cart.itemCount)} عدد)</span>
             <span>{formatPrice(cart.subtotal)}</span>
           </div>
+          <CouponBox coupon={coupon} />
+          {applied && (
+            <div className="flex items-center justify-between text-sm text-success">
+              <span>تخفیف ({applied.code})</span>
+              <span>−{formatPrice(applied.discountAmount)}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between text-sm text-ink-muted">
             <span>هزینه ارسال</span>
             <span>محاسبه نشده</span>
           </div>
           <div className="flex items-center justify-between border-t border-border pt-3">
             <span className="type-label">مبلغ سفارش</span>
-            <span className="type-price">{formatPrice(cart.subtotal)}</span>
+            <span className="type-price" aria-busy={coupon.busy}>
+              {formatPrice(payable)}
+            </span>
           </div>
           <p className="type-caption">
             پس از ثبت، سفارش در وضعیت «در انتظار پرداخت» قرار می‌گیرد و تا تأیید پرداخت قطعی
@@ -327,7 +361,7 @@ export function CheckoutView() {
             fullWidth
             size="lg"
             loading={submitting}
-            disabled={!selectedAddressId || hasUnavailable || submitting}
+            disabled={!selectedAddressId || hasUnavailable || submitting || coupon.busy}
             onClick={handleSubmit}
           >
             {priceNotice ? "تأیید مبلغ جدید و ثبت سفارش" : "تأیید و ثبت سفارش"}

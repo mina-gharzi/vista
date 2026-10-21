@@ -1,4 +1,4 @@
-import { CHECKOUT_ERROR_CODES } from "@vista/shared";
+import { CHECKOUT_ERROR_CODES, isCouponErrorCode } from "@vista/shared";
 import { ApiRequestError } from "@/lib/api/client";
 import { firstBackendErrors } from "@/lib/utils/zod";
 
@@ -8,6 +8,7 @@ export type CheckoutErrorKind =
   | "empty_cart"
   | "auth"
   | "address_missing"
+  | "coupon"
   | "validation"
   | "retryable"
   | "other";
@@ -50,6 +51,8 @@ export function describeCheckoutError(error: unknown): DescribedCheckoutError {
   if (error.status === 401) {
     return base("auth", "نشست شما منقضی شده است. لطفاً دوباره وارد شوید.");
   }
+  // خطای کوپن (۴۲۲ با کد COUPON_*): کد دیگر قابل استفاده نیست؛ سفارش ثبت نشده و ورودی عوض می‌شود → کلید جدید
+  if (isCouponErrorCode(error.code)) return base("coupon", error.message);
   if (error.code === CHECKOUT_ERROR_CODES.PRICE_CHANGED) {
     const actual = Number(error.details?.actualTotal?.[0]);
     return {

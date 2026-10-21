@@ -33,9 +33,16 @@ export function ProductCard({ product }: { product: ProductCardSummary }) {
             ٪{discountPercent} تخفیف
           </Badge>
         )}
+        {!product.inStock && (
+          <Badge variant="neutral" className="absolute end-2 top-2">
+            ناموجود
+          </Badge>
+        )}
       </div>
       <div className="flex flex-col gap-1">
-        <p className="type-caption">{product.categoryName}</p>
+        <p className="type-caption">
+          {product.categoryName} · {product.sellerStoreName}
+        </p>
         <h3 className="line-clamp-2 text-sm font-medium text-ink">{product.title}</h3>
         <div className="mt-1 flex items-baseline gap-2">
           <span className="type-price">{formatPrice(product.basePrice)}</span>

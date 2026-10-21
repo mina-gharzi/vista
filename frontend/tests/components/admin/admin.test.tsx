@@ -105,13 +105,13 @@ const category = (over: Partial<AdminCategory> = {}): AdminCategory => ({
   id: ID, name: "پوشاک", slug: "clothes", imageUrl: null, isActive: true, sortOrder: 0, parentId: null, parentName: null, productCount: 2, childCount: 0, ...over,
 });
 const orderDetail = (): AdminOrderDetail => ({
-  id: ID, orderNumber: 1001, status: "PAID", subtotal: 500000, shippingCost: 0, discountAmount: 0, totalAmount: 500000,
+  id: ID, orderNumber: 1001, status: "PAID", subtotal: 500000, shippingCost: 0, discountAmount: 0, couponCode: null, totalAmount: 500000,
   createdAt: "2026-10-10T10:00:00Z", paidAt: "2026-10-10T10:05:00Z", cancelledAt: null,
   customer: { name: "مینا مشتری", email: "mina@example.com", phone: "09120000000" },
   shippingAddress: { fullName: "مینا", phone: "09120000000", province: "تهران", city: "تهران", postalCode: "1234567890", addressLine: "خیابان اول" },
   fulfillment: { state: "PENDING", totalParcels: 1, shippedParcels: 0, deliveredParcels: 0 },
   sellerOrders: [{
-    id: "so1", sellerId: ID, sellerName: "بوتیک آرا", status: "PENDING", subtotal: 500000, trackingCode: null, shippedAt: null, deliveredAt: null,
+    id: "so1", sellerId: ID, sellerName: "بوتیک آرا", status: "PENDING", subtotal: 500000, discountAmount: 0, trackingCode: null, shippedAt: null, deliveredAt: null,
     items: [{ id: "i1", productTitle: "کت پشمی", sku: "SKU-1", size: "M", color: "مشکی", quantity: 2, unitPrice: 250000, lineTotal: 500000 }], history: [],
   }],
 });

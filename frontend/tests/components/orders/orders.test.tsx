@@ -59,11 +59,11 @@ function makeCart(overrides: Partial<CartSummary["items"][number]> = {}, subtota
 function makeOrder(overrides: Partial<OrderDetail> = {}): OrderDetail {
   return {
     id: ORDER_ID, orderNumber: 1001, status: "PENDING",
-    subtotal: 2_000_000, shippingCost: 0, discountAmount: 0, totalAmount: 2_000_000,
+    subtotal: 2_000_000, shippingCost: 0, discountAmount: 0, couponCode: null, totalAmount: 2_000_000,
     shippingAddress: { fullName: "مینا نمونه", phone: "09120000000", province: "تهران", city: "تهران", postalCode: "1234567890", addressLine: "خیابان اول" },
     sellerOrders: [
       {
-        id: "so1", sellerStoreName: "فروشگاه الف", status: "PENDING", subtotal: 2_000_000,
+        id: "so1", sellerStoreName: "فروشگاه الف", status: "PENDING", subtotal: 2_000_000, discountAmount: 0,
         trackingCode: null, shippedAt: null, deliveredAt: null,
         items: [{ id: "i1", productSlug: "coat", productTitle: "کت پشمی", size: "M", color: "مشکی", imageUrl: null, quantity: 2, unitPrice: 1_000_000, lineTotal: 2_000_000 }],
       },

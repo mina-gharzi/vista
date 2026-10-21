@@ -44,6 +44,7 @@ function Body({ order }: { order: AdminOrderDetail }) {
           <Field label="جمع اقلام" value={formatPrice(order.subtotal)} />
           <Field label="هزینه ارسال" value={formatPrice(order.shippingCost)} />
           <Field label="تخفیف" value={formatPrice(order.discountAmount)} />
+          {order.couponCode && <Field label="کد تخفیف" value={<span dir="ltr">{order.couponCode}</span>} />}
           <Field label="مبلغ کل" value={formatPrice(order.totalAmount)} />
         </dl>
       </Card>

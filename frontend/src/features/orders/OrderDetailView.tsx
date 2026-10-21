@@ -205,7 +205,15 @@ export function OrderDetailView({ orderId, justPlaced = false }: Props) {
         </div>
         {order.discountAmount > 0 && (
           <div className="flex items-center justify-between text-sm text-success">
-            <span>تخفیف</span>
+            <span>
+              تخفیف
+              {order.couponCode && (
+                <>
+                  {" "}
+                  (کد <span dir="ltr">{order.couponCode}</span>)
+                </>
+              )}
+            </span>
             <span>−{formatPrice(order.discountAmount)}</span>
           </div>
         )}

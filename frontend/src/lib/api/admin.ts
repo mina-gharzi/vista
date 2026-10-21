@@ -1,5 +1,10 @@
 import type {
   AdminCategory,
+  AdminCouponDetail,
+  AdminCouponList,
+  CouponStatusInput,
+  CreateCouponInput,
+  UpdateCouponInput,
   AdminDashboard,
   AdminOrderDetail,
   AdminOrderList,
@@ -48,6 +53,13 @@ export interface AdminOrdersParams {
   to?: string | undefined;
 }
 
+export interface AdminCouponsParams {
+  page?: number;
+  limit?: number;
+  q?: string | undefined;
+  isActive?: boolean | undefined;
+}
+
 const id = encodeURIComponent;
 
 /**
@@ -81,4 +93,14 @@ export const adminApi = {
   orders: (params: AdminOrdersParams = {}) =>
     apiRequest<AdminOrderList>(`/admin/orders${qs({ ...params })}`, { auth: true }),
   order: (orderId: string) => apiRequest<AdminOrderDetail>(`/admin/orders/${id(orderId)}`, { auth: true }),
+
+  coupons: (params: AdminCouponsParams = {}) =>
+    apiRequest<AdminCouponList>(`/admin/coupons${qs({ ...params })}`, { auth: true }),
+  coupon: (couponId: string) => apiRequest<AdminCouponDetail>(`/admin/coupons/${id(couponId)}`, { auth: true }),
+  createCoupon: (body: CreateCouponInput) =>
+    apiRequest<AdminCouponDetail>("/admin/coupons", { method: "POST", body, auth: true }),
+  updateCoupon: (couponId: string, body: UpdateCouponInput) =>
+    apiRequest<AdminCouponDetail>(`/admin/coupons/${id(couponId)}`, { method: "PATCH", body, auth: true }),
+  setCouponStatus: (couponId: string, body: CouponStatusInput) =>
+    apiRequest<AdminCouponDetail>(`/admin/coupons/${id(couponId)}/status`, { method: "PATCH", body, auth: true }),
 };

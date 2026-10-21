@@ -68,6 +68,12 @@ export default async function CategoryDetailPage({ params }: CategoryPageProps) 
         </div>
       )}
 
+      <p className="mb-6">
+        <Link href={`/products?category=${category.slug}`} className="text-bordeaux underline underline-offset-4">
+          جستجو و فیلتر در محصولات این دسته
+        </Link>
+      </p>
+
       {/* برای دسته‌های میانی (با زیردسته) هم محصولات مستقیم همان دسته نمایش داده می‌شود */}
       <ProductGrid
         products={(await catalogApi.list({ category: category.slug, limit: 24 })).data}
