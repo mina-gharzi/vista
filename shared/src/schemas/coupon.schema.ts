@@ -12,7 +12,9 @@ export const COUPON_CODE_PATTERN = /^[A-Z0-9_-]{3,32}$/;
 const PERSIAN_DIGIT_BASE = 0x06f0;
 const ARABIC_DIGIT_BASE = 0x0660;
 // فاصله، نیم‌فاصله، علائم جهت و کاراکترهای نامرئی
-const INVISIBLE = /[\s​-‏‪-‮⁦-⁩﻿]/g;
+/* eslint-disable no-misleading-character-class */
+const INVISIBLE = /[\s\u200B\u200C\u200D\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g;
+/* eslint-enable no-misleading-character-class */
 
 /**
  * نرمال‌سازی یکسان «کد کوپن» برای ذخیره و جستجو: ارقام فارسی/عربی → لاتین، NFKC (حروف تمام‌عرض)،

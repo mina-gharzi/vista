@@ -20,8 +20,10 @@ export function normalizeSearchText(input: string): string {
     .replace(/ك/g, "ک")
     .replace(/[ةۀ]/g, "ه")
     .replace(/[ً-ٰٟـ]/g, "") // اعراب و کشیده
-    .replace(/‌/g, " ") // نیم‌فاصله → فاصله
-    .replace(/[​‍‎‏‪-‮⁦-⁩﻿]/g, "")
+    .replace(/\u200C/g, " ") // نیم‌فاصله → فاصله
+    /* eslint-disable no-misleading-character-class */
+    .replace(/[\u200B\u200D\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, "")
+    /* eslint-enable no-misleading-character-class */
     // eslint-disable-next-line no-control-regex -- حذف نویسه‌های کنترلی عمداً است
     .replace(/[\u0000-\u001F\u007F]/g, " ")
     .replace(/[%_\\]/g, " ")
